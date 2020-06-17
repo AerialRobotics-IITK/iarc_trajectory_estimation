@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>iarc_trajectory_estimation</name>
+  <version>0.0.0</version>
+
+  <description>trajectory_generation package using mav_trajectory_generation</description>
+
+	<author email="dvyanshu@iitk.ac.in">Divyanshu Gangwar</author>
+
+  <maintainer email="dvyanshu@iitk.ac.in">Divyanshu Gangwar</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+
+	<depend>roscpp</depend>
+	<depend>mav_trajectory_generation</depend>
+  <depend>mav_trajectory_generation_ros</depend>
+
+</package>

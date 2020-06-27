@@ -1,0 +1,8 @@
+v_max: 2.0                         # maximum velocity of the MAV
+a_max: 2.0                         # maximum acceleration of the MAV
+visualize: true                    # Whether to publish information for visualization in RViz.
+curvature: 2.0                     # radius of the arc around the pylons.
+num_arc: 50                        # number of points to put into the trajectory in one arc around a pylon.
+num_straight: 100                  # number of points to put into the trajectory in one straight segment 
+                                   # between the pylons.
+rate: 10                           # Determines the loop rate.

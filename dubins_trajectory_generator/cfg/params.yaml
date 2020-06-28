@@ -6,3 +6,4 @@ num_arc: 50                        # number of points to put into the trajectory
 num_straight: 100                  # number of points to put into the trajectory in one straight segment 
                                    # between the pylons.
 rate: 10                           # Determines the loop rate.
+size_factor: 0.05                  # Determines the dimension of the visualized trajectory. 

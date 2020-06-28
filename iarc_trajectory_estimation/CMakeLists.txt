@@ -10,14 +10,14 @@ catkin_simple(ALL_DEPS_REQUIRED)
 # LIBRARIES #
 #############
 
-## cs_add_library()
+cs_add_library(${PROJECT_NAME}_lib src/trajectory_generation.cpp)
 
 ###############
 # EXECUTABLES #
 ###############
 
-## cs_add_executable()
-## target_link_libraries()
+cs_add_executable(${PROJECT_NAME}_node src/trajectory_generation_node.cpp)
+target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME}_lib)
 
 ##########
 # EXPORT #

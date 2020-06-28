@@ -18,6 +18,10 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>roscpp</depend>
+  <depend>mav_msgs</depend>
+  <depend>mav_planning_common</depend>
+  <depend>visualization_msgs</depend>
+  <depend>mav_trajectory_generation_ros</depend>
  
 
 </package>

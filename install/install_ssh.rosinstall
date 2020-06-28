@@ -1,0 +1,2 @@
+- git: {local-name: mav_voxblox_planning, uri: 'git@github.com:AerialRobotics-IITK/mav_voxblox_planning.git', version: 'feature/planning_lib_testing'}
+- git: {local-name: mav_trajectory_generation, uri: 'git@github.com:ethz-asl/mav_trajectory_generation.git'}

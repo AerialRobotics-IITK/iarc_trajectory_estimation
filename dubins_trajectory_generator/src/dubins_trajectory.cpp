@@ -48,10 +48,12 @@ namespace ariitk::trajectory_generation {
         start_.position_.x()=-1.0;
         start_.position_.y()=1.0;
         start_.position_.z()=10.0;
+        start_.heading_angle_= PI;
 
         end_.position_.x()=33.0;
         end_.position_.y()=1.0;
         end_.position_.z()=10.0;
+        end_.heading_angle_ = 0.0;
     }
 
     void DubinsTrajectory::generateTrajectory(Point start, Point end) {
@@ -60,13 +62,15 @@ namespace ariitk::trajectory_generation {
         start.position_.x()=start_.position_.x();
         start.position_.y()=start_.position_.y();
         start.position_.z()=start_.position_.z();
+        start.heading_angle_=start_.heading_angle_;
 
         end.position_.x()=end_.position_.x();
         end.position_.y()=end_.position_.y();
         end.position_.z()=end_.position_.z();
+        end.heading_angle_ = end_.heading_angle_;
 
-        turn_in_one_segment_=PI/2 - atan((end.position_.y() - 
-                                start.position_.y())/(end.position_.x() - start.position_.x()));
+        turn_in_one_segment_=PI/2 - atan((pylon_two_.y() - 
+                                pylon_one_.y())/(pylon_two_.x() - pylon_one_.x()));
 
         distance_ = sqrt((pylon_two_.x() - pylon_one_.x()) * (pylon_two_.x() - pylon_one_.x())
                             + (pylon_two_.y() - pylon_one_.y()) * (pylon_two_.y() - pylon_one_.y()));
@@ -74,18 +78,21 @@ namespace ariitk::trajectory_generation {
         double small_change_in_angle = (turn_in_one_segment_ )/num_arc_;
         double small_change_in_distance = distance_/num_straight_; 
 
-        start_.heading_angle_ = 0.0;
         Point prev = start;
         Point curr = start;
-        curr.heading_angle_ = prev.heading_angle_ + small_change_in_angle ;
-        trajectory_.push_back(curr);
+        curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
+        // trajectory_.push_back(curr);
 
-        while(prev.heading_angle_ <= turn_in_one_segment_) {
-            curr.position_.x()=pylon_one_.x() + curvature_ * sin(prev.heading_angle_);
-            curr.position_.y()=pylon_one_.y() + curvature_ * cos(prev.heading_angle_);
-            curr.heading_angle_ = prev.heading_angle_ + small_change_in_angle ;
-            trajectory_.push_back(curr);
+        while(prev.heading_angle_ >= turn_in_one_segment_) {
+            curr.position_.x()=pylon_one_.x() + curvature_ * cos(prev.heading_angle_);
+            curr.position_.y()=pylon_one_.y() - curvature_ * sin(prev.heading_angle_);
+            curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
             prev = curr;
+            if(prev.heading_angle_ >(179*PI)/180) {
+                continue;
+            }
+            // if(prev.heading_angle_ == PI) continue;
+            trajectory_.push_back(curr);
         }
 
         double distance = 0.0;
@@ -98,10 +105,14 @@ namespace ariitk::trajectory_generation {
             prev = curr;
         }
 
-        while(prev.heading_angle_ <= end_.heading_angle_) {
-            curr.position_.x()=pylon_two_.x() + curvature_ * sin(prev.heading_angle_);
-            curr.position_.y()=pylon_two_.y() + curvature_ * cos(prev.heading_angle_);
-            curr.heading_angle_ = prev.heading_angle_ + small_change_in_angle ;
+        small_change_in_angle = (turn_in_one_segment_ - (end.heading_angle_))/num_arc_;
+        prev.heading_angle_ = turn_in_one_segment_;
+        curr.heading_angle_ = turn_in_one_segment_;
+
+        while(prev.heading_angle_ >= end.heading_angle_) {
+            curr.position_.x()=pylon_two_.x() + curvature_ * cos(prev.heading_angle_);
+            curr.position_.y()=pylon_two_.y() - curvature_ * sin(prev.heading_angle_);
+            curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
             trajectory_.push_back(curr);
             prev = curr;
         }
@@ -113,35 +124,35 @@ namespace ariitk::trajectory_generation {
         if(trajectory_.empty()) {
             return;
         }
-        for(auto it=trajectory_.begin();it!=trajectory_.end();it++) {
-            trajectory.push_back(*it);
-        }
-        // size_factor = size_factor_;
+        // for(auto it=trajectory_.begin();it!=trajectory_.end();it++) {
+        //     trajectory.push_back(*it);
+        // }
+        // // size_factor = size_factor_;
 
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = frame_id;
-        marker.header.stamp = ros::Time::now();
-        marker.ns = topic_name;
-        marker.id = 0;
-        marker.type = visualization_msgs::Marker::LINE_LIST;
-        marker.scale.x = marker.scale.y = marker.scale.y = size_factor;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.color = color_map_[color];
+        // visualization_msgs::Marker marker;
+        // marker.header.frame_id = frame_id;
+        // marker.header.stamp = ros::Time::now();
+        // marker.ns = topic_name;
+        // marker.id = 0;
+        // marker.type = visualization_msgs::Marker::LINE_LIST;
+        // marker.scale.x = marker.scale.y = marker.scale.y = size_factor;
+        // marker.action = visualization_msgs::Marker::ADD;
+        // marker.color = color_map_[color];
         
-        geometry_msgs::Point prev_center;
-        prev_center.x = trajectory[0].position_.x();
-        prev_center.y = trajectory[0].position_.y();
-        prev_center.z = trajectory[0].position_.z();
+        // geometry_msgs::Point prev_center;
+        // prev_center.x = trajectory[0].position_.x();
+        // prev_center.y = trajectory[0].position_.y();
+        // prev_center.z = trajectory[0].position_.z();
 
-        for(uint i = 1; i < trajectory.size(); i++) {
-            marker.points.push_back(prev_center);
-            geometry_msgs::Point center;
-            center.x = trajectory[i].position_.x();
-            center.y = trajectory[i].position_.y();
-            center.z = trajectory[i].position_.z();
-            marker.points.push_back(center);
-            prev_center = center;
-        }
+        // for(uint i = 1; i < trajectory.size(); i++) {
+        //     marker.points.push_back(prev_center);
+        //     geometry_msgs::Point center;
+        //     center.x = trajectory[i].position_.x();
+        //     center.y = trajectory[i].position_.y();
+        //     center.z = trajectory[i].position_.z();
+        //     marker.points.push_back(center);
+        //     prev_center = center;
+        // }
     
         // visualization_msgs::MarkerArray markers;
         // markers.markers.push_back(marker);
@@ -175,6 +186,17 @@ namespace ariitk::trajectory_generation {
 
     void DubinsTrajectory::run() {
         
+        generateTrajectory(start_, end_);
+        if(visualize_) {
+            visualizeTrajectory("visualization_marker_array", trajectory_, "world", DubinsTrajectory::ColorType::TEAL, size_factor_);
+        }
+        Point temp=start_;
+        start_=end_;
+        end_=temp;
+        Eigen::Vector3d temp2=pylon_one_;
+        pylon_one_=pylon_two_;
+        pylon_two_=temp2;
+
         generateTrajectory(start_, end_);
         if(visualize_) {
             visualizeTrajectory("visualization_marker_array", trajectory_, "world", DubinsTrajectory::ColorType::TEAL, size_factor_);

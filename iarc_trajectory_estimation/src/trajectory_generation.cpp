@@ -11,7 +11,7 @@ namespace ariitk::trajectory_generation
         mav_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("mav_odometry", 10);
         marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",
                                                                      10);
-        trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command_trajectory",
+        trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory",
                                                                                   10);
         server_ = nh_.advertiseService("command",&TrajectoryGenerationPolynomial::commandServiceCallback,this);
         client_ = nh_.serviceClient<std_srvs::Trigger>("command");
@@ -26,6 +26,7 @@ namespace ariitk::trajectory_generation
 
         TrajectoryGenerationPolynomial::computePoints();
         TrajectoryGenerationPolynomial::generateTrajectory();
+
     }
 
     void TrajectoryGenerationPolynomial::mavOdometryCallback(const nav_msgs::Odometry &msg)
@@ -37,7 +38,7 @@ namespace ariitk::trajectory_generation
     {
 
         mav_trajectory_generation::Vertex start(dimension_), end(dimension_);
-        derivative_to_optimize_ = mav_trajectory_generation::derivative_order::SNAP;
+        derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
 
         start.makeStartOrEnd(Eigen::Vector3d(-5, 0, 2), derivative_to_optimize_);
         start.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
@@ -65,6 +66,7 @@ namespace ariitk::trajectory_generation
     bool TrajectoryGenerationPolynomial::commandServiceCallback(std_srvs::Trigger::Request &req,
                                                                 std_srvs::Trigger::Response &resp)
     {
+
         mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points_);
         mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points_, &generated_trajectory_);
 
@@ -75,6 +77,7 @@ namespace ariitk::trajectory_generation
 
         resp.success = true;
         resp.message = "Trajectory given as command";
+        ROS_INFO("%s\n",resp.message.c_str());
         return true;
     }
 

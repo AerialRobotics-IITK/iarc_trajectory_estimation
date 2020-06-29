@@ -8,7 +8,6 @@
 #include <nav_msgs/Odometry.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 #include <mav_msgs/conversions.h>
-// #include <mav_msgs/eigen_mav_msgs.h>
 #include <Eigen/Dense>
 #include <std_srvs/Trigger.h>
 

@@ -223,13 +223,9 @@ namespace ariitk::trajectory_generation {
         // computeFirstHalfLoop();
         // computeSecondHalfLoop();
 
-        mav_trajectory_generation::Vertex start2(dimension_), end2(dimension_);        
-        derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
-
-        start2.makeStartOrEnd(Eigen::Vector3d(0.0, 6.66, 1.0), derivative_to_optimize_);
-        start2.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
-                            Eigen::Vector3d(5.0/8.3878, 6.66/8.3878, -1.0/8.3878));
-        end2.makeStartOrEnd(Eigen::Vector3d(-0.0075, 0.505, 1.0), derivative_to_optimize_);
+        mav_trajectory_generation::Vertex start2(dimension_), end2(dimension_);   
+        start2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(0.0, 6.66, 1.0));
+        end2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(-0.0075, 0.505, 1.0));
 
         vertices_.push_back(start2);
         vertices_.push_back(end2);

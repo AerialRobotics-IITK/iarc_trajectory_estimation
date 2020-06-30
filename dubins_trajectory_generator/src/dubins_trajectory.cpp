@@ -10,6 +10,11 @@ namespace ariitk::trajectory_generation {
 
             marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",
                                                                              10);
+            trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory",
+                                                                                  10);
+            server_ = nh_.advertiseService("command",&DubinsTrajectory::commandServiceCallback,this);
+            client_ = nh_.serviceClient<std_srvs::Trigger>("command");    
+
             nh_private_.param("v_max", v_max_, 2.0);
             nh_private_.param("a_max", a_max_, 2.0);
             nh_private_.param("visualize", visualize_, true);
@@ -17,190 +22,260 @@ namespace ariitk::trajectory_generation {
             nh_private_.param("num_arc", num_arc_, 50);
             nh_private_.param("num_straight", num_straight_, 100);
             nh_private_.param("size_factor", size_factor_, 0.05);
+            nh_private_.param("command", command_, true);
+            nh_private_.param("distance", distance_, 1.0);
+            nh_private_.param("dimension", dimension_, 3);
         
-            pylon_one_.x() = 1.0;
-            pylon_one_.y() = 1.0;
-            pylon_one_.z() = 10.0;
-            pylon_two_.x() = 31.0;
-            pylon_two_.y() = 1.0;
-            pylon_two_.z() = 10.0;
-    }
+            pylon_one_.x() = 0.0;
+            pylon_one_.y() = 8.66;
+            pylon_one_.z() = 1.0;
+            pylon_two_.x() = 0.0;
+            pylon_two_.y() = 12.66;
+            pylon_two_.z() = 1.0;
 
-    void DubinsTrajectory::init(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private) {
-        nh_ = nh; 
-        nh_private_ = nh_private;
-    
-        nh_private_.param("visualize", visualize_, true);
+            start_.position_.x()=-5.0;
+            start_.position_.y()=0.0;
+            start_.position_.z()=1.0;
+            start_.heading_angle_= PI;
 
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::WHITE,      Color::White()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::BLACK,      Color::Black()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::BLUE,       Color::Blue()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::ORANGE,     Color::Orange()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::YELLOW,     Color::Yellow()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::RED,        Color::Red()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::PINK,       Color::Pink()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::GREEN,      Color::Green()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::GRAY,       Color::Gray()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::TEAL,       Color::Teal()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::CHARTREUSE, Color::Chartreuse()));
-        color_map_.insert(std::make_pair(DubinsTrajectory::ColorType::PURPLE,     Color::Purple()));
+            end_.position_.x()=0.0;
+            end_.position_.y()=6.66;
+            end_.position_.z()=1.0;
+            end_.heading_angle_ = 0.0;
 
-        start_.position_.x()=-1.0;
-        start_.position_.y()=1.0;
-        start_.position_.z()=10.0;
-        start_.heading_angle_= PI;
+            turn_in_one_segment_=PI/2 - atan((pylon_two_.x() - 
+                                pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));
 
-        end_.position_.x()=33.0;
-        end_.position_.y()=1.0;
-        end_.position_.z()=10.0;
-        end_.heading_angle_ = 0.0;
-    }
-
-    void DubinsTrajectory::generateTrajectory(Point start, Point end) {
-        trajectory_.clear();
- 
-        start.position_.x()=start_.position_.x();
-        start.position_.y()=start_.position_.y();
-        start.position_.z()=start_.position_.z();
-        start.heading_angle_=start_.heading_angle_;
-
-        end.position_.x()=end_.position_.x();
-        end.position_.y()=end_.position_.y();
-        end.position_.z()=end_.position_.z();
-        end.heading_angle_ = end_.heading_angle_;
-
-        turn_in_one_segment_=PI/2 - atan((pylon_two_.y() - 
-                                pylon_one_.y())/(pylon_two_.x() - pylon_one_.x()));
-
-        distance_ = sqrt((pylon_two_.x() - pylon_one_.x()) * (pylon_two_.x() - pylon_one_.x())
+            seperation_pylons_ = sqrt((pylon_two_.x() - pylon_one_.x()) * (pylon_two_.x() - pylon_one_.x())
                             + (pylon_two_.y() - pylon_one_.y()) * (pylon_two_.y() - pylon_one_.y()));
 
-        double small_change_in_angle = (turn_in_one_segment_ )/num_arc_;
-        double small_change_in_distance = distance_/num_straight_; 
+            small_change_in_angle_ = (turn_in_one_segment_ )/num_arc_;
+            small_change_in_distance_ = seperation_pylons_/num_straight_; 
 
-        Point prev = start;
-        Point curr = start;
-        curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
-        // trajectory_.push_back(curr);
+            DubinsTrajectory::computePoints();
+            DubinsTrajectory::generateTrajectory();
+    }
 
-        while(prev.heading_angle_ >= turn_in_one_segment_) {
-            curr.position_.x()=pylon_one_.x() + curvature_ * cos(prev.heading_angle_);
-            curr.position_.y()=pylon_one_.y() - curvature_ * sin(prev.heading_angle_);
-            curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
-            prev = curr;
-            if(prev.heading_angle_ >(179*PI)/180) {
-                continue;
-            }
-            // if(prev.heading_angle_ == PI) continue;
-            trajectory_.push_back(curr);
+    void DubinsTrajectory::computeFirstHalfLoop() {
+
+        start_.position_.x()=0.0;
+        start_.position_.y()=6.66;
+        start_.position_.z()=1.0;
+        start_.heading_angle_= PI;
+
+        end_.position_.x()=0.0;
+        end_.position_.y()=14.66;
+        end_.position_.z()=1.0;
+        end_.heading_angle_ = 0.0;
+
+        Point prev_pos,curr_pos;
+        prev_pos.position_ = start_.position_;
+        prev_pos.heading_angle_ = start_.heading_angle_;
+        curr_pos.position_ = start_.position_;
+        curr_pos.heading_angle_ = start_.heading_angle_ ;
+
+        mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
+
+        while(prev_pos.heading_angle_ >= turn_in_one_segment_) {
+            curr_pos.position_.y()=pylon_one_.y() + curvature_ * cos(prev_pos.heading_angle_);
+            curr_pos.position_.x()=pylon_one_.x() + curvature_ * sin(prev_pos.heading_angle_);
+            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+            prev_pos = curr_pos;
+            // ROS_INFO("turn_in_one_segment_: %f ,small_change_in_angle_: %f ,curr_pos.heading_angle_: %f \n", turn_in_one_segment_, small_change_in_angle_, prev_pos.heading_angle_);
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
         double distance = 0.0;
 
-        while(distance <= distance_) {
-            curr.position_.x() = prev.position_.x() + small_change_in_distance * sin(turn_in_one_segment_);
-            curr.position_.y() = prev.position_.y() + small_change_in_distance * cos(turn_in_one_segment_);
-            distance = distance + small_change_in_distance;
-            trajectory_.push_back(curr);
-            prev = curr;
+        while(distance <= seperation_pylons_) {
+            curr_pos.position_.y() = prev_pos.position_.y() + small_change_in_distance_ * sin(turn_in_one_segment_);
+            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(turn_in_one_segment_);
+            curr_pos.position_.z()=start_.position_.z();
+            distance = distance + small_change_in_distance_;
+            prev_pos = curr_pos;
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
-        small_change_in_angle = (turn_in_one_segment_ - (end.heading_angle_))/num_arc_;
-        prev.heading_angle_ = turn_in_one_segment_;
-        curr.heading_angle_ = turn_in_one_segment_;
+        // small_change_in_angle_ = (turn_in_one_segment_ - (end_.heading_angle_))/num_arc_;
+        prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
+        curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
 
-        while(prev.heading_angle_ >= end.heading_angle_) {
-            curr.position_.x()=pylon_two_.x() + curvature_ * cos(prev.heading_angle_);
-            curr.position_.y()=pylon_two_.y() - curvature_ * sin(prev.heading_angle_);
-            curr.heading_angle_ = prev.heading_angle_ - small_change_in_angle ;
-            trajectory_.push_back(curr);
-            prev = curr;
+        while(prev_pos.heading_angle_ >= end_.heading_angle_) {
+            curr_pos.position_.y()=pylon_two_.y() + curvature_ * cos(prev_pos.heading_angle_);
+            curr_pos.position_.x()=pylon_two_.x() + curvature_ * sin(prev_pos.heading_angle_);
+            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+            prev_pos = curr_pos;
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
+        }
+    }
+
+    void DubinsTrajectory::computeSecondHalfLoop() {
+
+
+        start_.position_.x()=0.0;
+        start_.position_.y()=14.66;
+        start_.position_.z()=1.0;
+        start_.heading_angle_ = PI;
+
+        end_.position_.x()=0.0;
+        end_.position_.y()=6.66;
+        end_.position_.z()=1.0;
+        end_.heading_angle_= 0.0;
+
+        Point prev_pos,curr_pos;
+        prev_pos.position_ = start_.position_;
+        prev_pos.heading_angle_ = start_.heading_angle_;
+        curr_pos.position_ = start_.position_;
+        curr_pos.heading_angle_ = start_.heading_angle_ ;
+
+        mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
+
+        while(prev_pos.heading_angle_ >= turn_in_one_segment_) {
+            curr_pos.position_.y()=pylon_two_.y() - curvature_ * cos(prev_pos.heading_angle_);
+            curr_pos.position_.x()=pylon_two_.x() - curvature_ * sin(prev_pos.heading_angle_);
+            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+            prev_pos = curr_pos;
+            // ROS_INFO("turn_in_one_segment_: %f ,small_change_in_angle_: %f ,curr_pos.heading_angle_: %f \n", turn_in_one_segment_, small_change_in_angle_, prev_pos.heading_angle_);
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
+        }
+
+        double distance = 0.0;
+
+        while(distance <= seperation_pylons_) {
+            curr_pos.position_.y() = prev_pos.position_.y() - small_change_in_distance_ * sin(turn_in_one_segment_);
+            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(turn_in_one_segment_);
+            curr_pos.position_.z()=start_.position_.z();
+            distance = distance + small_change_in_distance_;
+            prev_pos = curr_pos;
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
+        }
+
+        // small_change_in_angle_ = (turn_in_one_segment_ - (end_.heading_angle_))/num_arc_;
+        prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
+        curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
+
+        while(prev_pos.heading_angle_ >= end_.heading_angle_) {
+            curr_pos.position_.y()=pylon_one_.y() - curvature_ * cos(prev_pos.heading_angle_);
+            curr_pos.position_.x()=pylon_one_.x() - curvature_ * sin(prev_pos.heading_angle_);
+            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+            prev_pos = curr_pos;
+
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            vertices_.push_back(curr);
+            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
     }
 
-    void DubinsTrajectory::visualizeTrajectory(const std::string& topic_name, std::vector<Point> trajectory, 
-                                                     const std::string& frame_id , const ColorType& color, const double& size_factor) {
-        if(trajectory_.empty()) {
-            return;
-        }
-        // for(auto it=trajectory_.begin();it!=trajectory_.end();it++) {
-        //     trajectory.push_back(*it);
+    void DubinsTrajectory::computePoints() {
+
+        mav_trajectory_generation::Vertex start(dimension_), end(dimension_);        
+        derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
+
+        start.makeStartOrEnd(Eigen::Vector3d(start_.position_.x(), start_.position_.y(), start_.position_.z()), derivative_to_optimize_);
+        start.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
+                            Eigen::Vector3d(5.0/8.3878, 6.66/8.3878, -1.0/8.3878));
+        end.makeStartOrEnd(Eigen::Vector3d(end_.position_.x(), end_.position_.y(), end_.position_.z()), derivative_to_optimize_);
+
+        vertices_.push_back(start);
+        vertices_.push_back(end);
+
+        ROS_INFO("size of vertices_: %d \n", vertices_.size());
+        // for(uint i=1;i<=8;i++) {
+        //     ROS_INFO("i= %d\n",i);
+        //     computeFirstHalfLoop();
+        //     computeSecondHalfLoop();
         // }
-        // // size_factor = size_factor_;
 
-        // visualization_msgs::Marker marker;
-        // marker.header.frame_id = frame_id;
-        // marker.header.stamp = ros::Time::now();
-        // marker.ns = topic_name;
-        // marker.id = 0;
-        // marker.type = visualization_msgs::Marker::LINE_LIST;
-        // marker.scale.x = marker.scale.y = marker.scale.y = size_factor;
-        // marker.action = visualization_msgs::Marker::ADD;
-        // marker.color = color_map_[color];
-        
-        // geometry_msgs::Point prev_center;
-        // prev_center.x = trajectory[0].position_.x();
-        // prev_center.y = trajectory[0].position_.y();
-        // prev_center.z = trajectory[0].position_.z();
+        computeFirstHalfLoop();
+        computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
+        // computeFirstHalfLoop();
+        // computeSecondHalfLoop();
 
-        // for(uint i = 1; i < trajectory.size(); i++) {
-        //     marker.points.push_back(prev_center);
-        //     geometry_msgs::Point center;
-        //     center.x = trajectory[i].position_.x();
-        //     center.y = trajectory[i].position_.y();
-        //     center.z = trajectory[i].position_.z();
-        //     marker.points.push_back(center);
-        //     prev_center = center;
-        // }
-    
-        // visualization_msgs::MarkerArray markers;
-        // markers.markers.push_back(marker);
-        // marker_pub_.publish(markers);
+        mav_trajectory_generation::Vertex start2(dimension_), end2(dimension_);        
+        derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
 
+        start2.makeStartOrEnd(Eigen::Vector3d(0.0, 6.66, 1.0), derivative_to_optimize_);
+        start2.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
+                            Eigen::Vector3d(5.0/8.3878, 6.66/8.3878, -1.0/8.3878));
+        end2.makeStartOrEnd(Eigen::Vector3d(-0.0075, 0.505, 1.0), derivative_to_optimize_);
 
-        visualization_msgs::MarkerArray marker_array;
-        mav_msgs::EigenTrajectoryPointVector diagram_path;
+        vertices_.push_back(start2);
+        vertices_.push_back(end2);
 
-        for (const Point path_point : trajectory_) {
-            mav_msgs::EigenTrajectoryPoint point;
-            point.position_W = path_point.position_;
-            diagram_path.push_back(point);
+    }
+
+    void DubinsTrajectory::generateTrajectory() {
+        // vertices_.clear();
+
+        segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
+
+        mav_trajectory_generation::PolynomialOptimization<10> opt(dimension_);
+        opt.setupFromVertices(vertices_, segment_times_, derivative_to_optimize_);
+        opt.solveLinear();
+        opt.getTrajectory(&trajectory_);
+
+        std::string frame_id = "world";
+        mav_trajectory_generation::drawMavTrajectory(trajectory_, distance_, frame_id, &markers_);
+
+    }
+
+    bool DubinsTrajectory::commandServiceCallback(std_srvs::Trigger::Request &req,
+                                                                std_srvs::Trigger::Response &resp)
+    {
+
+        mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points_);
+        mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points_, &generated_trajectory_);
+
+        if (command_)
+        {
+            trajectory_pub_.publish(generated_trajectory_);
         }
 
-        double path_length = mav_planning::computePathLength(diagram_path);
-        int num_vertices = diagram_path.size();
-
-        if (visualize_) {
-            marker_array.markers.push_back(mav_planning::createMarkerForPath(diagram_path, 
-                                               frame_id, mav_visualization::Color::Purple(),"dubins_traje", 0.1));
-        }
-
-        ROS_INFO("Path length: %f Vertices: %d", path_length, num_vertices);
-
-        if (visualize_) {
-            marker_pub_.publish(marker_array);
-        }
-
+        resp.success = true;
+        resp.message = "Trajectory given as command";
+        ROS_INFO("%s\n",resp.message.c_str());
+        return true;
     }
 
     void DubinsTrajectory::run() {
-        
-        generateTrajectory(start_, end_);
-        if(visualize_) {
-            visualizeTrajectory("visualization_marker_array", trajectory_, "world", DubinsTrajectory::ColorType::TEAL, size_factor_);
-        }
-        Point temp=start_;
-        start_=end_;
-        end_=temp;
-        Eigen::Vector3d temp2=pylon_one_;
-        pylon_one_=pylon_two_;
-        pylon_two_=temp2;
 
-        generateTrajectory(start_, end_);
-        if(visualize_) {
-            visualizeTrajectory("visualization_marker_array", trajectory_, "world", DubinsTrajectory::ColorType::TEAL, size_factor_);
+         if (visualize_)
+        {
+            marker_pub_.publish(markers_);
         }
+        
     }
 
 } //namespace ariitk::trajectory_generation

@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
 
     while (ros::ok()) {
         trajectory.run();
+        ros::spinOnce();
         loop_rate.sleep();
     }
 

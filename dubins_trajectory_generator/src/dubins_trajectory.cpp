@@ -10,8 +10,12 @@ namespace ariitk::trajectory_generation {
 
             marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",
                                                                              10);
+            reverse_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array",
+                                                                             10);                                                                 
             trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory",
                                                                                   10);
+            reverse_trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory",
+                                                                                  10);                                                                      
             server_ = nh_.advertiseService("command",&DubinsTrajectory::commandServiceCallback,this);
             client_ = nh_.serviceClient<std_srvs::Trigger>("command");    
 
@@ -82,11 +86,9 @@ namespace ariitk::trajectory_generation {
             curr_pos.position_.z()=start_.position_.z();
             curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
             prev_pos = curr_pos;
-            // ROS_INFO("turn_in_one_segment_: %f ,small_change_in_angle_: %f ,curr_pos.heading_angle_: %f \n", turn_in_one_segment_, small_change_in_angle_, prev_pos.heading_angle_);
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
         double distance = 0.0;
@@ -100,10 +102,8 @@ namespace ariitk::trajectory_generation {
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
-        // small_change_in_angle_ = (turn_in_one_segment_ - (end_.heading_angle_))/num_arc_;
         prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
         curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
 
@@ -116,7 +116,6 @@ namespace ariitk::trajectory_generation {
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
     }
 
@@ -147,11 +146,9 @@ namespace ariitk::trajectory_generation {
             curr_pos.position_.z()=start_.position_.z();
             curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
             prev_pos = curr_pos;
-            // ROS_INFO("turn_in_one_segment_: %f ,small_change_in_angle_: %f ,curr_pos.heading_angle_: %f \n", turn_in_one_segment_, small_change_in_angle_, prev_pos.heading_angle_);
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
         double distance = 0.0;
@@ -165,10 +162,8 @@ namespace ariitk::trajectory_generation {
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
-        // small_change_in_angle_ = (turn_in_one_segment_ - (end_.heading_angle_))/num_arc_;
         prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
         curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
 
@@ -181,12 +176,12 @@ namespace ariitk::trajectory_generation {
 
             curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
             vertices_.push_back(curr);
-            // ROS_INFO("size of vertices_: %d ", vertices_.size());
         }
 
     }
 
     void DubinsTrajectory::computePoints() {
+        ROS_INFO("Calculating waypoints for the victorious forward journey"); //Please don't remove this line.Thanks!! :)
 
         mav_trajectory_generation::Vertex start(dimension_), end(dimension_);        
         derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
@@ -200,40 +195,26 @@ namespace ariitk::trajectory_generation {
         vertices_.push_back(end);
 
         ROS_INFO("size of vertices_: %d \n", vertices_.size());
-        // for(uint i=1;i<=8;i++) {
-        //     ROS_INFO("i= %d\n",i);
-        //     computeFirstHalfLoop();
-        //     computeSecondHalfLoop();
-        // }
+        for(uint i=1;i<=8;i++) {
+            ROS_INFO("i= %d\n",i);
+            computeFirstHalfLoop();
+            computeSecondHalfLoop();
+        }
 
-        computeFirstHalfLoop();
-        computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-        // computeFirstHalfLoop();
-        // computeSecondHalfLoop();
-
-        mav_trajectory_generation::Vertex start2(dimension_), end2(dimension_);   
-        start2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(0.0, 6.66, 1.0));
-        end2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(-0.0075, 0.505, 1.0));
-
-        vertices_.push_back(start2);
+        mav_trajectory_generation::Vertex end2(dimension_);   
+        end2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(4.0, 1.505, 1.0));
         vertices_.push_back(end2);
+
+        ROS_INFO("Reversing waypoints for the victorious return journey"); //Please don't remove this line also.Thanks!! :)
+        auto it=vertices_.end();
+        it--;
+        for( ;it>=vertices_.begin();it--) {
+            reverse_vertices_.push_back(*it);
+        }
 
     }
 
     void DubinsTrajectory::generateTrajectory() {
-        // vertices_.clear();
 
         segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
 
@@ -245,6 +226,18 @@ namespace ariitk::trajectory_generation {
         std::string frame_id = "world";
         mav_trajectory_generation::drawMavTrajectory(trajectory_, distance_, frame_id, &markers_);
 
+
+
+        // reverse_segment_times_ = mav_trajectory_generation::estimateSegmentTimes(reverse_vertices_, v_max_, a_max_);
+
+        // mav_trajectory_generation::PolynomialOptimization<10> reverse_opt(dimension_);
+        // reverse_opt.setupFromVertices(reverse_vertices_, reverse_segment_times_, derivative_to_optimize_);
+        // reverse_opt.solveLinear();
+        // reverse_opt.getTrajectory(&reverse_trajectory_);
+
+        // std::string frame_id = "world";
+        // mav_trajectory_generation::drawMavTrajectory(reverse_trajectory_, distance_, frame_id, &reverse_markers_);
+
     }
 
     bool DubinsTrajectory::commandServiceCallback(std_srvs::Trigger::Request &req,
@@ -254,9 +247,13 @@ namespace ariitk::trajectory_generation {
         mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points_);
         mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points_, &generated_trajectory_);
 
+        // mav_trajectory_generation::sampleWholeTrajectory(reverse_trajectory_, 0.1, &reverse_trajectory_points_);
+        // mav_msgs::msgMultiDofJointTrajectoryFromEigen(reverse_trajectory_points_, &reverse_generated_trajectory_);
+
         if (command_)
         {
             trajectory_pub_.publish(generated_trajectory_);
+            // reverse_trajectory_pub_.publish(reverse_generated_trajectory_);
         }
 
         resp.success = true;
@@ -270,6 +267,7 @@ namespace ariitk::trajectory_generation {
          if (visualize_)
         {
             marker_pub_.publish(markers_);
+            // reverse_marker_pub_.publish(reverse_markers_);
         }
         
     }

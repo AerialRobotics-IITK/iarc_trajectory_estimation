@@ -6,9 +6,10 @@
     <arg name="gui" default="true"/>
 
     <group ns="$(arg mav_name)">
-        <node name= "dubins_trajectory_generator" pkg="dubins_trajectory_generator" type="dubins_trajectory_node" output="screen" clear_params="true" >
+        <node name= "dubins_trajectory_generator" pkg="dubins_trajectory_generator" type="dubins_trajectory_node" output="screen" >
             <rosparam file="$(find dubins_trajectory_generator)/cfg/params.yaml" command="load"/>
         </node>
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dubins_trajectory_generator)/rviz_config/trajectoryconfig.rviz" />
     </group>	
 
     <include file="$(find iarc_simulation_tools)/launch/default.launch">

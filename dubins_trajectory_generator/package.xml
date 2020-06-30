@@ -8,19 +8,22 @@
   </description>
 
   <author email="piyushk@iitk.ac.in">Piyush Kumar</author>
-  <author email="dvyanshu@iitk.ac.in">Divyanshu Gangwar</author>
 
   <maintainer email="piyushk@iitk.ac.in">Piyush Kumar</maintainer>
 
-  <license>BSD</license>
+  <license>TODO</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>roscpp</depend>
   <depend>mav_msgs</depend>
+  <depend>std_srvs</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
   <depend>mav_planning_common</depend>
   <depend>visualization_msgs</depend>
+  <depend>mav_trajectory_generation</depend>
   <depend>mav_trajectory_generation_ros</depend>
  
 

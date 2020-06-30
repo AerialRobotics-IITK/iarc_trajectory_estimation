@@ -61,14 +61,22 @@ class DubinsTrajectory {
     Eigen::Vector3d pylon_one_;
     Eigen::Vector3d pylon_two_;
     mav_trajectory_generation::Vertex::Vector vertices_;
+    mav_trajectory_generation::Vertex::Vector reverse_vertices_;
     mav_trajectory_generation::Trajectory trajectory_;
+    mav_trajectory_generation::Trajectory reverse_trajectory_;
     std::vector<double> segment_times_;
+    std::vector<double> reverse_segment_times_;
 
     mav_msgs::EigenTrajectoryPoint::Vector trajectory_points_;
+    mav_msgs::EigenTrajectoryPoint::Vector reverse_trajectory_points_;
     trajectory_msgs::MultiDOFJointTrajectory generated_trajectory_;
+    trajectory_msgs::MultiDOFJointTrajectory reverse_generated_trajectory_;
     visualization_msgs::MarkerArray markers_;
+    visualization_msgs::MarkerArray reverse_markers_;
     ros::Publisher marker_pub_;
+    ros::Publisher reverse_marker_pub_;
     ros::Publisher trajectory_pub_;
+    ros::Publisher reverse_trajectory_pub_;
     ros::ServiceServer server_;
     ros::ServiceClient client_;
 

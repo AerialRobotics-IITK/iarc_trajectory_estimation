@@ -1,14 +1,20 @@
 #pragma once
 
 #include <ros/ros.h>
+#include <eigen3/Eigen/Dense>
 #include <memory>
 #include <mav_planning_common/utils.h>
 #include <mav_planning_common/path_visualization.h>
 #include <mav_planning_common/physical_constraints.h>
 #include <mav_msgs/conversions.h>
+#include <mav_trajectory_generation/polynomial_optimization_linear.h>
+#include <mav_trajectory_generation/trajectory.h>
+#include <mav_trajectory_generation/trajectory_sampling.h>
+#include <mav_trajectory_generation_ros/ros_visualization.h>
 #include <mav_visualization/helpers.h>
 #include <ros/package.h>
-#include <eigen3/Eigen/Dense>
+#include <std_srvs/Trigger.h>
+#include <trajectory_msgs/MultiDOFJointTrajectory.h>
 #include <visualization_msgs/MarkerArray.h>
 
 
@@ -17,46 +23,20 @@ namespace ariitk::trajectory_generation {
 struct Point {
     Eigen::Vector3d position_;
     double heading_angle_;
-    typedef std::shared_ptr<struct Point> Ptr;
-    typedef Point::Ptr Node;
-};
-
-class Color : public std_msgs::ColorRGBA {
-    public:
-    Color() : std_msgs::ColorRGBA() {}
-    Color(double red, double green, double blue) : Color(red, green, blue, 1.0) {}
-    Color(double red, double green, double blue, double alpha) : Color() {
-        r = red;
-        g = green;
-        b = blue;
-        a = alpha;
-    }
-
-    static const Color White() { return Color(1.0, 1.0, 1.0); }
-    static const Color Black() { return Color(0.0, 0.0, 0.0); }
-    static const Color Gray() { return Color(0.5, 0.5, 0.5); }
-    static const Color Red() { return Color(1.0, 0.0, 0.0); }
-    static const Color Green() { return Color(0.0, 1.0, 0.0); }
-    static const Color Blue() { return Color(0.0, 0.0, 1.0); }
-    static const Color Yellow() { return Color(1.0, 1.0, 0.0); }
-    static const Color Orange() { return Color(1.0, 0.5, 0.0); }
-    static const Color Purple() { return Color(0.5, 0.0, 1.0); }
-    static const Color Chartreuse() { return Color(0.5, 1.0, 0.0); }
-    static const Color Teal() { return Color(0.0, 1.0, 1.0); }
-    static const Color Pink() { return Color(1.0, 0.0, 0.5); }
 };
 
 class DubinsTrajectory {
     public:
     DubinsTrajectory(const ros::NodeHandle& nh,const ros::NodeHandle& nh_private);
-    void generateTrajectory(Point start, Point end);
-    enum class ColorType{WHITE, BLACK, GRAY, RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE, CHARTREUSE, TEAL, PINK};
-    void visualizeTrajectory(const std::string& topic_name, std::vector<Point> trajectory, 
-                                    const std::string& frame_id = "world", const ColorType& color = ColorType::PINK, const double& size_factor= 0.5);
-    void init(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+    void generateTrajectory();
     void run();
 
     private:
+    void computeFirstHalfLoop();
+    void computeSecondHalfLoop();
+    void computePoints();
+    bool commandServiceCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);
+
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;    
 
@@ -65,20 +45,32 @@ class DubinsTrajectory {
     double turn_in_one_segment_;
     double curvature_; 
     double size_factor_;
-    double distance_; //distance between the centres of two pylons.
+    double seperation_pylons_; //distance between the centres of two pylons.
+    double distance_;
+    double small_change_in_angle_;
+    double small_change_in_distance_;
     int num_arc_; 
     int num_straight_;
+    int dimension_;
+    int derivative_to_optimize_;
 
     bool visualize_;
+    bool command_;
 
+    Point start_,end_;
     Eigen::Vector3d pylon_one_;
     Eigen::Vector3d pylon_two_;
-    Point start_;
-    Point end_;
-    std::unordered_map<ColorType, Color> color_map_;
-    // visualization_msgs::MarkerArray markers_;
-    std::vector<Point> trajectory_;
+    mav_trajectory_generation::Vertex::Vector vertices_;
+    mav_trajectory_generation::Trajectory trajectory_;
+    std::vector<double> segment_times_;
+
+    mav_msgs::EigenTrajectoryPoint::Vector trajectory_points_;
+    trajectory_msgs::MultiDOFJointTrajectory generated_trajectory_;
+    visualization_msgs::MarkerArray markers_;
     ros::Publisher marker_pub_;
+    ros::Publisher trajectory_pub_;
+    ros::ServiceServer server_;
+    ros::ServiceClient client_;
 
 };
 

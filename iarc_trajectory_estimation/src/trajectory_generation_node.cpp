@@ -1,12 +1,14 @@
 #include <iarc_trajectory_estimation/trajectory_generation.hpp>
 
+using namespace ariitk::trajectory_generation;
+
 int main(int argc, char** argv) {
 
     ros::init(argc, argv, "trajectory_generator");
     ros::NodeHandle nh("");
     ros::NodeHandle nh_private("~");
 
-    ariitk::trajectory_generation::TrajectoryGenerationPolynomial trajectory(nh, nh_private);
+    TrajectoryGenerationPolynomial trajectory(nh, nh_private);
     int rate;
     nh_private.param("rate", rate, 10);
     ros::Rate loop_rate(rate);

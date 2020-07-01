@@ -27,9 +27,10 @@ $ wstool update
 
 ``` 
 $ catkin build 
+$ source ~/iarc_ws/devel/setup.bash
 ```
 
-4- Launch the node
+5- Launch the node
 
 ``` 
 $ roslaunch iarc_trajectory_estimation default.launch
@@ -37,7 +38,7 @@ $ roslaunch iarc_trajectory_estimation default.launch
 
 If everything is fine till now, you must be seeing a trajectory from the start point of MAV to first pylon.
 
-5- To make the firefly go to the first pylon following the trajectory, do :-
+6- To make the firefly go to the first pylon following the trajectory, do :-
 
 ``` 
 $ rosservice call /firefly/command "{}"

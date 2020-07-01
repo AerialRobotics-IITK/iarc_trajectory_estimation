@@ -1,6 +1,6 @@
 #General Parameters
 
-rate                 : 10       # Loop Rate of the while loop 
+rate                 : 10       # u_int: Loop Rate of the while loop 
 publish_mav_odometry : true     # Whether to publish mav_odometry or not
 verbose              : false    # Print additional debug and timing information.
 
@@ -8,7 +8,7 @@ verbose              : false    # Print additional debug and timing information.
 
 visualize            : true     # Whether to visualize trajectory in rviz or not
 command              : true     # Send commands to mav
-dimension            : 3        # Determines the spatial dimension of trajectory.
-v_max                : 2.0      # Maximum velocity of the MAV in the entire trajectory.
-a_max                : 2.0      # Maximum acc. of the MAV in the entire trajectory.
-distance             : 1.0      # Distance by which to seperate additional markers.
+dimension            : 3        # u_int: Determines the spatial dimension of trajectory.
+v_max                : 2.0      # double: Maximum velocity of the MAV in the entire trajectory.
+a_max                : 2.0      # double: Maximum acc. of the MAV in the entire trajectory.
+distance             : 1.0      # double: Distance by which to seperate additional markers.

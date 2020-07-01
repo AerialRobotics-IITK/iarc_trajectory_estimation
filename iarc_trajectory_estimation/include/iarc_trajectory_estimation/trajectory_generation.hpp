@@ -13,11 +13,10 @@
 
 namespace ariitk::trajectory_generation {
 
-class TrajectoryGenerationPolynomial {
+class PolynomialTrajectoryGeneration {
   
   public:
-    TrajectoryGenerationPolynomial(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
-    ~TrajectoryGenerationPolynomial() {}
+    PolynomialTrajectoryGeneration(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
     void run();
 
   private:

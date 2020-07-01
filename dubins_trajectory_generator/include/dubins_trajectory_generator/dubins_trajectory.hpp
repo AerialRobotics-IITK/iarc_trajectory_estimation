@@ -32,8 +32,9 @@ class DubinsTrajectory {
     void run();
 
     private:
-    void computeFirstHalfLoop();
-    void computeSecondHalfLoop();
+    void computeTangencyPoints();
+    void computeFirstHalfLoop(uint flag);
+    void computeSecondHalfLoop(uint flag);
     void computePoints();
     bool commandServiceCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);
 
@@ -49,6 +50,7 @@ class DubinsTrajectory {
     double distance_;
     double small_change_in_angle_;
     double small_change_in_distance_;
+    double tangency_angle_;
     int num_arc_; 
     int num_straight_;
     int dimension_;
@@ -58,8 +60,11 @@ class DubinsTrajectory {
     bool command_;
 
     Point start_,end_;
+    Point first_tangency_point_;
+    Point second_tangency_point_;
     Eigen::Vector3d pylon_one_;
     Eigen::Vector3d pylon_two_;
+    Eigen::Vector3d hunter_killer_;
     mav_trajectory_generation::Vertex::Vector vertices_;
     mav_trajectory_generation::Vertex::Vector reverse_vertices_;
     mav_trajectory_generation::Trajectory trajectory_;

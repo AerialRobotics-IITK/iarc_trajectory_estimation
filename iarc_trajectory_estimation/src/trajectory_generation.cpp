@@ -7,7 +7,6 @@ PolynomialTrajectoryGeneration::PolynomialTrajectoryGeneration(const ros::NodeHa
     , nh_private_(nh_private) {
 
     mav_odom_sub_ = nh_.subscribe("ground_truth/odometry", 10, &PolynomialTrajectoryGeneration::mavOdometryCallback, this);
-    mav_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("mav_odometry", 10);
     marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
     trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
     server_ = nh_.advertiseService("command", &PolynomialTrajectoryGeneration::commandServiceCallback, this);
@@ -74,9 +73,6 @@ void PolynomialTrajectoryGeneration::run() {
     
     if (visualize_) {
         marker_pub_.publish(markers_);
-    }
-    if (publish_) {
-        mav_odom_pub_.publish(mav_odom_);
     }
 }
 }  // namespace ariitk::trajectory_generation

@@ -51,7 +51,6 @@ class PolynomialTrajectoryGeneration {
     ros::NodeHandle nh_private_;
 
     ros::Subscriber mav_odom_sub_;
-    ros::Publisher mav_odom_pub_;
     ros::Publisher marker_pub_;
     ros::Publisher trajectory_pub_;
     ros::ServiceServer server_;

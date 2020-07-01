@@ -2,15 +2,15 @@
 
 namespace ariitk::trajectory_generation {
 
-TrajectoryGenerationPolynomial::TrajectoryGenerationPolynomial(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
+PolynomialTrajectoryGeneration::PolynomialTrajectoryGeneration(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
     : nh_(nh)
     , nh_private_(nh_private) {
 
-    mav_odom_sub_ = nh_.subscribe("ground_truth/odometry", 10, &TrajectoryGenerationPolynomial::mavOdometryCallback, this);
+    mav_odom_sub_ = nh_.subscribe("ground_truth/odometry", 10, &PolynomialTrajectoryGeneration::mavOdometryCallback, this);
     mav_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("mav_odometry", 10);
     marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
     trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
-    server_ = nh_.advertiseService("command", &TrajectoryGenerationPolynomial::commandServiceCallback, this);
+    server_ = nh_.advertiseService("command", &PolynomialTrajectoryGeneration::commandServiceCallback, this);
     client_ = nh_.serviceClient<std_srvs::Trigger>("command");
 
     nh_private_.param("dimension", dimension_, 3);
@@ -21,15 +21,15 @@ TrajectoryGenerationPolynomial::TrajectoryGenerationPolynomial(const ros::NodeHa
     nh_private_.param("publish_mav_odometry", publish_, true);
     nh_private_.param("command", command_, true);
 
-    TrajectoryGenerationPolynomial::computePoints();
-    TrajectoryGenerationPolynomial::generateTrajectory();
+    PolynomialTrajectoryGeneration::computePoints();
+    PolynomialTrajectoryGeneration::generateTrajectory();
 }
 
-void TrajectoryGenerationPolynomial::mavOdometryCallback(const nav_msgs::Odometry& msg) {
+void PolynomialTrajectoryGeneration::mavOdometryCallback(const nav_msgs::Odometry& msg) {
     mav_odom_ = msg;
 }
 
-void TrajectoryGenerationPolynomial::computePoints() {
+void PolynomialTrajectoryGeneration::computePoints() {
 
     mav_trajectory_generation::Vertex start(dimension_), end(dimension_);
     derivative_to_optimize_ = mav_trajectory_generation::derivative_order::VELOCITY;
@@ -42,7 +42,7 @@ void TrajectoryGenerationPolynomial::computePoints() {
     vertices_.push_back(end);
 }
 
-void TrajectoryGenerationPolynomial::generateTrajectory() {
+void PolynomialTrajectoryGeneration::generateTrajectory() {
 
     segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
 
@@ -55,7 +55,7 @@ void TrajectoryGenerationPolynomial::generateTrajectory() {
     mav_trajectory_generation::drawMavTrajectory(trajectory_, distance_, frame_id, &markers_);
 }
 
-bool TrajectoryGenerationPolynomial::commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp) {
+bool PolynomialTrajectoryGeneration::commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp) {
 
     mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points_);
     mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points_, &generated_trajectory_);
@@ -70,7 +70,7 @@ bool TrajectoryGenerationPolynomial::commandServiceCallback(std_srvs::Trigger::R
     return true;
 }
 
-void TrajectoryGenerationPolynomial::run() {
+void PolynomialTrajectoryGeneration::run() {
     
     if (visualize_) {
         marker_pub_.publish(markers_);

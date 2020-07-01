@@ -8,7 +8,7 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh("");
     ros::NodeHandle nh_private("~");
 
-    TrajectoryGenerationPolynomial trajectory(nh, nh_private);
+    PolynomialTrajectoryGeneration trajectory(nh, nh_private);
     int rate;
     nh_private.param("rate", rate, 10);
     ros::Rate loop_rate(rate);

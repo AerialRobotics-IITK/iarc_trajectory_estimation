@@ -34,7 +34,7 @@ namespace ariitk::trajectory_generation {
             pylon_one_.y() = 8.66;
             pylon_one_.z() = 1.0;
             pylon_two_.x() = 0.0;
-            pylon_two_.y() = 12.66;
+            pylon_two_.y() = 408.66;
             pylon_two_.z() = 1.0;
 
             start_.position_.x()=-5.0;
@@ -42,10 +42,14 @@ namespace ariitk::trajectory_generation {
             start_.position_.z()=1.0;
             start_.heading_angle_= PI;
 
-            end_.position_.x()=0.0;
-            end_.position_.y()=6.66;
-            end_.position_.z()=1.0;
+            end_.position_.x() = pylon_one_.x();
+            end_.position_.y() = pylon_one_.y() - curvature_;
+            end_.position_.z() = pylon_one_.z();
             end_.heading_angle_ = 0.0;
+
+            hunter_killer_.x() = 5.0;
+            hunter_killer_.y() = 1.505;
+            hunter_killer_.z() = 1.0;
 
             turn_in_one_segment_=PI/2 - atan((pylon_two_.x() - 
                                 pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));
@@ -56,20 +60,45 @@ namespace ariitk::trajectory_generation {
             small_change_in_angle_ = (turn_in_one_segment_ )/num_arc_;
             small_change_in_distance_ = seperation_pylons_/num_straight_; 
 
+            DubinsTrajectory::computeTangencyPoints();
             DubinsTrajectory::computePoints();
             DubinsTrajectory::generateTrajectory();
     }
 
-    void DubinsTrajectory::computeFirstHalfLoop() {
+    void DubinsTrajectory::computeTangencyPoints() {
+        //Constant values used below are computed by using positions of pylon_one_(0.0, 8.66, 1.0) and launch position(-5.0, 0.0, 1.0).These can be changed as per need.
+        tangency_angle_ = acos((69.28*curvature_ + sqrt(159992.96 - 1600 * curvature_ * curvature_))/799.9648); 
 
-        start_.position_.x()=0.0;
-        start_.position_.y()=6.66;
-        start_.position_.z()=1.0;
-        start_.heading_angle_= PI;
+        first_tangency_point_.position_.x() = curvature_ * sin(tangency_angle_);
+        first_tangency_point_.position_.y() = pylon_one_.y() - curvature_ * cos(tangency_angle_);
+        first_tangency_point_.position_.z() = pylon_one_.z();
+        first_tangency_point_.heading_angle_ = PI/2 - tangency_angle_;
 
-        end_.position_.x()=0.0;
-        end_.position_.y()=14.66;
-        end_.position_.z()=1.0;
+        //Position of second_tangency_point_ is computed assuming that the position of hunter_killer_ is mirror image of the launch position along the y axis.
+        second_tangency_point_.position_.x() = (-1) * first_tangency_point_.position_.x();
+        second_tangency_point_.position_.y() = pylon_one_.y() - curvature_ * cos(tangency_angle_);
+        second_tangency_point_.position_.z() = pylon_one_.z();
+        second_tangency_point_.heading_angle_ = tangency_angle_;
+
+    }
+
+    void DubinsTrajectory::computeFirstHalfLoop(uint flag) {
+
+        if(flag==1) {
+            start_ = first_tangency_point_;
+            turn_in_one_segment_ = first_tangency_point_.heading_angle_;
+        }
+        else {
+            start_.position_.x() = pylon_one_.x();
+            start_.position_.y() = pylon_one_.y() - curvature_;
+            start_.position_.z() = pylon_one_.z();
+            start_.heading_angle_= PI;
+            tangency_angle_ = 0.0;
+        }
+
+        end_.position_.x() = pylon_two_.x();
+        end_.position_.y() = pylon_two_.y() + curvature_;
+        end_.position_.z() = pylon_two_.z();
         end_.heading_angle_ = 0.0;
 
         Point prev_pos,curr_pos;
@@ -77,10 +106,15 @@ namespace ariitk::trajectory_generation {
         prev_pos.heading_angle_ = start_.heading_angle_;
         curr_pos.position_ = start_.position_;
         curr_pos.heading_angle_ = start_.heading_angle_ ;
+        if(flag==1) {
+            prev_pos.heading_angle_ = start_.heading_angle_ + PI/2;
+            curr_pos.heading_angle_ = start_.heading_angle_ + PI/2;
+        }
+        double angle_to_move = PI - tangency_angle_ - turn_in_one_segment_;
 
         mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
 
-        while(prev_pos.heading_angle_ >= turn_in_one_segment_) {
+        while(prev_pos.heading_angle_ >= angle_to_move) {
             curr_pos.position_.y()=pylon_one_.y() + curvature_ * cos(prev_pos.heading_angle_);
             curr_pos.position_.x()=pylon_one_.x() + curvature_ * sin(prev_pos.heading_angle_);
             curr_pos.position_.z()=start_.position_.z();
@@ -94,8 +128,8 @@ namespace ariitk::trajectory_generation {
         double distance = 0.0;
 
         while(distance <= seperation_pylons_) {
-            curr_pos.position_.y() = prev_pos.position_.y() + small_change_in_distance_ * sin(turn_in_one_segment_);
-            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(turn_in_one_segment_);
+            curr_pos.position_.y() = prev_pos.position_.y() + small_change_in_distance_ * sin(angle_to_move);
+            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(angle_to_move);
             curr_pos.position_.z()=start_.position_.z();
             distance = distance + small_change_in_distance_;
             prev_pos = curr_pos;
@@ -104,8 +138,8 @@ namespace ariitk::trajectory_generation {
             vertices_.push_back(curr);
         }
 
-        prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
-        curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
+        prev_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
+        curr_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
 
         while(prev_pos.heading_angle_ >= end_.heading_angle_) {
             curr_pos.position_.y()=pylon_two_.y() + curvature_ * cos(prev_pos.heading_angle_);
@@ -119,18 +153,25 @@ namespace ariitk::trajectory_generation {
         }
     }
 
-    void DubinsTrajectory::computeSecondHalfLoop() {
+    void DubinsTrajectory::computeSecondHalfLoop(uint flag) {
 
-
-        start_.position_.x()=0.0;
-        start_.position_.y()=14.66;
-        start_.position_.z()=1.0;
+        start_.position_.x() = pylon_two_.x();
+        start_.position_.y() = pylon_two_.y() + curvature_;
+        start_.position_.z() = pylon_two_.z();
         start_.heading_angle_ = PI;
 
-        end_.position_.x()=0.0;
-        end_.position_.y()=6.66;
-        end_.position_.z()=1.0;
-        end_.heading_angle_= 0.0;
+        if(flag==8) {
+            end_ = second_tangency_point_;
+        }
+        else {
+            end_.position_.x() = pylon_one_.x();
+            end_.position_.y() = pylon_one_.y() - curvature_;
+            end_.position_.z() = pylon_one_.z();
+            end_.heading_angle_= 0.0;
+        }
+        tangency_angle_ = 0.0;
+        turn_in_one_segment_=PI/2 - atan((pylon_two_.x() - 
+                                pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));
 
         Point prev_pos,curr_pos;
         prev_pos.position_ = start_.position_;
@@ -138,9 +179,10 @@ namespace ariitk::trajectory_generation {
         curr_pos.position_ = start_.position_;
         curr_pos.heading_angle_ = start_.heading_angle_ ;
 
+        double angle_to_move = PI - tangency_angle_ - turn_in_one_segment_;
         mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
 
-        while(prev_pos.heading_angle_ >= turn_in_one_segment_) {
+        while(prev_pos.heading_angle_ >= angle_to_move) {
             curr_pos.position_.y()=pylon_two_.y() - curvature_ * cos(prev_pos.heading_angle_);
             curr_pos.position_.x()=pylon_two_.x() - curvature_ * sin(prev_pos.heading_angle_);
             curr_pos.position_.z()=start_.position_.z();
@@ -154,9 +196,9 @@ namespace ariitk::trajectory_generation {
         double distance = 0.0;
 
         while(distance <= seperation_pylons_) {
-            curr_pos.position_.y() = prev_pos.position_.y() - small_change_in_distance_ * sin(turn_in_one_segment_);
-            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(turn_in_one_segment_);
-            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.position_.y() = prev_pos.position_.y() - small_change_in_distance_ * sin(angle_to_move);
+            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(angle_to_move);
+            curr_pos.position_.z() = start_.position_.z();
             distance = distance + small_change_in_distance_;
             prev_pos = curr_pos;
 
@@ -164,13 +206,13 @@ namespace ariitk::trajectory_generation {
             vertices_.push_back(curr);
         }
 
-        prev_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
-        curr_pos.heading_angle_ = turn_in_one_segment_ - small_change_in_angle_;
+        prev_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
+        curr_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
 
         while(prev_pos.heading_angle_ >= end_.heading_angle_) {
-            curr_pos.position_.y()=pylon_one_.y() - curvature_ * cos(prev_pos.heading_angle_);
-            curr_pos.position_.x()=pylon_one_.x() - curvature_ * sin(prev_pos.heading_angle_);
-            curr_pos.position_.z()=start_.position_.z();
+            curr_pos.position_.y() = pylon_one_.y() - curvature_ * cos(prev_pos.heading_angle_);
+            curr_pos.position_.x() = pylon_one_.x() - curvature_ * sin(prev_pos.heading_angle_);
+            curr_pos.position_.z() = start_.position_.z();
             curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
             prev_pos = curr_pos;
 
@@ -189,27 +231,32 @@ namespace ariitk::trajectory_generation {
         start.makeStartOrEnd(Eigen::Vector3d(start_.position_.x(), start_.position_.y(), start_.position_.z()), derivative_to_optimize_);
         start.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
                             Eigen::Vector3d(5.0/8.3878, 6.66/8.3878, -1.0/8.3878));
-        end.makeStartOrEnd(Eigen::Vector3d(end_.position_.x(), end_.position_.y(), end_.position_.z()), derivative_to_optimize_);
+        end.makeStartOrEnd(Eigen::Vector3d(first_tangency_point_.position_.x(), first_tangency_point_.position_.y(), first_tangency_point_.position_.z()), derivative_to_optimize_);
 
         vertices_.push_back(start);
         vertices_.push_back(end);
 
-        ROS_INFO("size of vertices_: %d \n", vertices_.size());
         for(uint i=1;i<=8;i++) {
-            ROS_INFO("i= %d\n",i);
-            computeFirstHalfLoop();
-            computeSecondHalfLoop();
+            ROS_INFO("i= %d",i);
+            ROS_INFO("size of vertices_: %d \n", vertices_.size());
+            computeFirstHalfLoop(i);
+            computeSecondHalfLoop(i);
         }
 
-        mav_trajectory_generation::Vertex end2(dimension_);   
-        end2.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(4.0, 1.505, 1.0));
-        vertices_.push_back(end2);
+        mav_trajectory_generation::Vertex hunter_killer(dimension_);   
+        hunter_killer.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(hunter_killer_.x(), hunter_killer_.y(), hunter_killer_.z()));
+        vertices_.push_back(hunter_killer);
 
         ROS_INFO("Reversing waypoints for the victorious return journey"); //Please don't remove this line also.Thanks!! :)
         auto it=vertices_.end();
         it--;
         for( ;it>=vertices_.begin();it--) {
             reverse_vertices_.push_back(*it);
+        }
+        auto it2 = reverse_vertices_.begin();
+        it2++;   //For proper segment_times.
+        for( ;it2!=reverse_vertices_.end();it2++) {
+            vertices_.push_back(*it2);
         }
 
     }

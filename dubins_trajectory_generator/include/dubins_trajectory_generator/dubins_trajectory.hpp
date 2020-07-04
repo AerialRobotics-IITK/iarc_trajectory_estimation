@@ -21,8 +21,15 @@
 namespace ariitk::trajectory_generation {
 
 struct Point {
-    Eigen::Vector3d position_;
-    double heading_angle_;
+    Point(const Eigen::Vector3d& pos, const double& yaw = 0.0)
+        : position(pos)
+        , yaw(yaw) {}
+        
+    Point(const double&x, const double& y, const double& z, const double& yaw = 0.0) 
+       : Point(Eigen::Vector3d(x,y,z), yaw) {}
+    
+    Eigen::Vector3d position;
+    double yaw = 0.0;
 };
 
 class DubinsTrajectory {
@@ -40,27 +47,26 @@ class DubinsTrajectory {
 
     double v_max_;
     double a_max_;
-    double turn_in_one_segment_;
-    double curvature_; 
+    double arc_angle_;
+    double arc_radius_; 
     double size_factor_;
-    double seperation_pylons_; 
-    double distance_;
-    double small_change_in_angle_;
-    double small_change_in_distance_;
+    double interpylon_distance_;
+    double delta_angle_;
+    double delta_distance_;
     double tangency_angle_;
     double initial_vel_;
-    int num_arc_; 
-    int num_straight_;
+    int num_arc_points_; 
+    int num_linear_points_;
     int dimension_;
     int derivative_to_optimize_;
 
     bool visualize_;
     bool command_;
 
-    Point first_tangency_point_;
-    Point second_tangency_point_;
-    Eigen::Vector3d pylon_one_;
-    Eigen::Vector3d pylon_two_;
+    Point arc_entry_point_;
+    Point arc_exit_point_;
+    Eigen::Vector3d left_pylon_;
+    Eigen::Vector3d right_pylon_;
     Eigen::Vector3d hunter_killer_;
     Eigen::Vector3d launch_pos_;
     mav_trajectory_generation::Vertex::Vector vertices_;
@@ -79,4 +85,3 @@ class DubinsTrajectory {
 };
 
 } //namespace ariitk::trajectory_generation
-

@@ -38,8 +38,7 @@ namespace ariitk::trajectory_generation {
 
         turn_in_one_segment_= PI/2 - atan((pylon_two_.x() - pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));  // Determines the angle our MAV turns in one single curved part.
 
-        seperation_pylons_ = sqrt((pylon_two_.x() - pylon_one_.x()) * (pylon_two_.x() - pylon_one_.x())
-                                        + (pylon_two_.y() - pylon_one_.y()) * (pylon_two_.y() - pylon_one_.y()));   // Distance between the two pylons.
+        interpylon_distance_ = (left_pylon_ - right_pylon_).norm();  // Distance between the two pylons
 
         small_change_in_angle_ = (turn_in_one_segment_ )/num_arc_;
         small_change_in_distance_ = seperation_pylons_/num_straight_; 
@@ -96,11 +95,8 @@ namespace ariitk::trajectory_generation {
         end.position_.z() = pylon_two_.z();
         end.heading_angle_ = 0.0;
 
-        Point prev_pos,curr_pos;
-        prev_pos.position_ = start.position_;
-        prev_pos.heading_angle_ = start.heading_angle_;
-        curr_pos.position_ = start.position_;
-        curr_pos.heading_angle_ = start.heading_angle_ ;
+        Point prev_pos = start;
+        Point curr_pos = start;
         if(flag==1) {
             prev_pos.heading_angle_ = start.heading_angle_ + PI/2;
             curr_pos.heading_angle_ = start.heading_angle_ + PI/2;
@@ -228,15 +224,8 @@ namespace ariitk::trajectory_generation {
 
         start.makeStartOrEnd(Eigen::Vector3d(launch_pos_.x(), launch_pos_.y(), launch_pos_.z()), derivative_to_optimize_);
 
-        double a,b,c;    // Declaring these values just to copy some other values in order to make the expression of norm (calculated below) shorter.
-        a = first_tangency_point_.position_.x() - launch_pos_.x();
-        b = first_tangency_point_.position_.y() - launch_pos_.y();
-        c = first_tangency_point_.position_.z() - launch_pos_.z();
-
-        //Calculating norm for the direction of initial velocity of the MAV.
-        double norm = sqrt(a*a + b*b + c*c);
         start.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
-                            Eigen::Vector3d(initial_vel_ * a/norm, initial_vel_ * b/norm, initial_vel_ * c/norm));
+                            initial_vel_ * (first_tangency_point_ - launch_pos_).normalized());
         end.makeStartOrEnd(Eigen::Vector3d(first_tangency_point_.position_.x(), first_tangency_point_.position_.y(), first_tangency_point_.position_.z()), derivative_to_optimize_);
 
         vertices_.push_back(start);

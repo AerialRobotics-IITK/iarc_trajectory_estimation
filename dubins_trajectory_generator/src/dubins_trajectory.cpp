@@ -51,6 +51,33 @@ namespace ariitk::trajectory_generation {
 
     }
 
+    void DubinsTrajectory::loadParams(ros::NodeHandle& nh_private) {
+        nh_private_ = nh_private;
+
+        nh_private_.param("initial_vel", initial_vel_, 1.0);
+        nh_private_.param("v_max", v_max_, 2.0);
+        nh_private_.param("a_max", a_max_, 2.0);
+        nh_private_.param("visualize", visualize_, true);
+        nh_private_.param("arc_radius", arc_radius_, 2.0);
+        nh_private_.param("num_laps", num_laps_, 8);
+        nh_private_.param("num_arc_points", num_arc_points_, 5);
+        nh_private_.param("num_linear_points", num_linear_points_, 4);
+        nh_private_.param("command", command_, true);
+        nh_private_.param("distance", distance_, 1.0);
+        nh_private_.param("launch_position_x", launch_pos_.x(), -5.0);
+        nh_private_.param("launch_position_y", launch_pos_.y(), 0.0);
+        nh_private_.param("launch_position_z", launch_pos_.z(), 0.0);
+        nh_private_.param("left_pylon_x", left_pylon_.x(), 0.0);
+        nh_private_.param("left_pylon_y", left_pylon_.y(), 8.66);
+        nh_private_.param("left_pylon_z", left_pylon_.z(), 1.0);
+        nh_private_.param("right_pylon.x", right_pylon_.x(), 0.0);
+        nh_private_.param("right_pylon.y", right_pylon_.y(), 408.66);
+        nh_private_.param("right_pylon.z", right_pylon_.z(), 1.0);
+        nh_private_.param("hunter_killer.x", hunter_killer_.x(), 5.0);
+        nh_private_.param("hunter_killer.y", hunter_killer_.y(), 1.505);
+        nh_private_.param("hunter_killer.z", hunter_killer_.z(), 1.0);
+    }
+
     void DubinsTrajectory::computeTangencyPoints() {
 
         double a,b,c;    // Declaring these values just to copy some other values in order to make the expression of tangency_angle_ (calculated below) shorter.

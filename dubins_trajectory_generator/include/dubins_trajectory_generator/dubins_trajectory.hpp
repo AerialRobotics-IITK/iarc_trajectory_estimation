@@ -39,10 +39,14 @@ class DubinsTrajectory {
     void run();
 
     private:
+    ros::NodeHandle nh_;
+    ros::NodeHandle nh_private_;
+
     void computeTangencyPoints();
-    void computeFirstHalfLoop(uint flag);
-    void computeSecondHalfLoop(uint flag);
+    void computeFirstHalfLoop(uint lap_number);
+    void computeSecondHalfLoop(uint lap_number);
     void computePoints();
+    void loadParams(ros::NodeHandle& nh_private);
     bool commandServiceCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);  
 
     double v_max_;
@@ -50,6 +54,7 @@ class DubinsTrajectory {
     double arc_angle_;
     double arc_radius_; 
     double size_factor_;
+    double distance_;
     double interpylon_distance_;
     double delta_angle_;
     double delta_distance_;
@@ -57,14 +62,14 @@ class DubinsTrajectory {
     double initial_vel_;
     int num_arc_points_; 
     int num_linear_points_;
-    int dimension_;
     int derivative_to_optimize_;
+    uint num_laps_;
 
     bool visualize_;
     bool command_;
 
-    Point arc_entry_point_;
-    Point arc_exit_point_;
+    Point loop_entry_point_;
+    Point loop_exit_point_;
     Eigen::Vector3d left_pylon_;
     Eigen::Vector3d right_pylon_;
     Eigen::Vector3d hunter_killer_;
@@ -74,13 +79,11 @@ class DubinsTrajectory {
     mav_trajectory_generation::Trajectory trajectory_;
     std::vector<double> segment_times_;
 
-    mav_msgs::EigenTrajectoryPoint::Vector trajectory_points_;
-    trajectory_msgs::MultiDOFJointTrajectory generated_trajectory_;
     visualization_msgs::MarkerArray markers_;
     ros::Publisher marker_pub_;
     ros::Publisher trajectory_pub_;
-    ros::ServiceServer server_;
-    ros::ServiceClient client_;
+    ros::ServiceServer publish_trajectory_server_;
+    ros::ServiceClient publish_trajectory_client_;
 
 };
 

@@ -53,7 +53,6 @@ class DubinsTrajectory {
     double a_max_;
     double arc_angle_;
     double arc_radius_; 
-    double size_factor_;
     double distance_;
     double interpylon_distance_;
     double delta_angle_;

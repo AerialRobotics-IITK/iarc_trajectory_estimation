@@ -26,5 +26,4 @@
   <depend>mav_trajectory_generation</depend>
   <depend>mav_trajectory_generation_ros</depend>
  
-
 </package>

@@ -42,11 +42,11 @@ class DubinsTrajectory {
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
 
+    void loadParams(ros::NodeHandle& nh_private);
     void computeTangencyPoints();
     void computeFirstHalfLoop(uint lap_number);
     void computeSecondHalfLoop(uint lap_number);
     void computePoints();
-    void loadParams(ros::NodeHandle& nh_private);
     bool commandServiceCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp);  
 
     double v_max_;

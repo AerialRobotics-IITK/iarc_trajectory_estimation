@@ -1,49 +1,24 @@
 #include <dubins_trajectory_generator/dubins_trajectory.hpp>
 
-const double PI=3.14159265358979323846;
 namespace ariitk::trajectory_generation {
 
-    DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_private) {
+    DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_private) 
+    : nh_(nh),
+      nh_private_(nh_private) {
 
-        marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);                                                               
-        trajectory_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);                                                                      
-        server_ = nh.advertiseService("command",&DubinsTrajectory::commandServiceCallback,this);
-        client_ = nh.serviceClient<std_srvs::Trigger>("command");    
+        marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);                                                               
+        trajectory_pub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);                                                                      
+        publish_trajectory_server_ = nh_.advertiseService("command",&DubinsTrajectory::commandServiceCallback,this);
+        publish_trajectory_client_ = nh_.serviceClient<std_srvs::Trigger>("command");    
 
-        nh_private.param("initial_vel", initial_vel_, 1.0);
-        nh_private.param("v_max", v_max_, 2.0);
-        nh_private.param("a_max", a_max_, 2.0);
-        nh_private.param("visualize", visualize_, true);
-        nh_private.param("curvature", curvature_, 2.0);
-        nh_private.param("num_arc", num_arc_, 5);
-        nh_private.param("num_straight", num_straight_, 4);
-        nh_private.param("command", command_, true);
-        nh_private.param("distance", distance_, 1.0);
-        nh_private.param("dimension", dimension_, 3);
-        
-        pylon_one_.x() = 0.0;
-        pylon_one_.y() = 8.66;
-        pylon_one_.z() = 1.0;
-        pylon_two_.x() = 0.0;
-        pylon_two_.y() = 408.66;
-        pylon_two_.z() = 1.0;
+        DubinsTrajectory::loadParams(nh_private);
 
-        launch_pos_.x()=-5.0;
-        launch_pos_.y()=0.0;
-        launch_pos_.z()=0.0;
-
-        hunter_killer_.x() = 5.0;
-        hunter_killer_.y() = 1.505;    // Kept it a bit away from the Hunter Killer just to avoid any collision. It can be changed as per need.
-        hunter_killer_.z() = 1.0;
-
-        turn_in_one_segment_= PI/2 - atan((pylon_two_.x() - pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));  // Determines the angle our MAV turns in one single curved part.
+        arc_angle_= M_PI/2 - atan((right_pylon_.x() - left_pylon_.x())/(right_pylon_.y() - left_pylon_.y()));  // Determines the angle our MAV turns in one single curved part.
 
         interpylon_distance_ = (left_pylon_ - right_pylon_).norm();  // Distance between the two pylons
 
-        small_change_in_angle_ = (turn_in_one_segment_ )/num_arc_;
-        small_change_in_distance_ = seperation_pylons_/num_straight_; 
-            small_change_in_distance_ = seperation_pylons_/num_straight_; 
-        small_change_in_distance_ = seperation_pylons_/num_straight_; 
+        delta_angle_ = (arc_angle_ )/num_arc_points_;
+        delta_distance_ = interpylon_distance_/num_linear_points_;  
 
         DubinsTrajectory::computeTangencyPoints();
         DubinsTrajectory::computePoints();
@@ -80,164 +55,147 @@ namespace ariitk::trajectory_generation {
 
     void DubinsTrajectory::computeTangencyPoints() {
 
-        double a,b,c;    // Declaring these values just to copy some other values in order to make the expression of tangency_angle_ (calculated below) shorter.
-        a = launch_pos_.x();
-        b = pylon_one_.y();
-        c = curvature_;
-        // Calculating tangency_angle_ assuming that launch position is on x axis and pylon_one_ is on the y axis.
-        tangency_angle_ = acos((b*c + sqrt(pow(a,4) + a*a*b*b - c*c*a*a))/(b*b + a*a)); 
+        // Declaring these values just to copy some other values in order to make the expression of tangency_angle_ (calculated below) shorter.
+        double start_x = launch_pos_.x();
+        double left_y = left_pylon_.y();
+        double r = arc_radius_;
 
-        first_tangency_point_.position_.x() = curvature_ * sin(tangency_angle_);
-        first_tangency_point_.position_.y() = pylon_one_.y() - curvature_ * cos(tangency_angle_);
-        first_tangency_point_.position_.z() = pylon_one_.z();
-        first_tangency_point_.heading_angle_ = PI/2 - tangency_angle_;
+        //I got the expression below just by solving a quadratic equation in cos(theta) while calculating distance between loop_entry_point_ and launch_pos_ using coordinate geometry.
+        //The expression was as below (0.0 has been used at some places just because launch position is on x axis and left_pylon_ is on the y axis.):
+        //(start_x-0.0)*(start_x-0.0) + (left_y - 0.0)*(left_y - 0.0) - r*r = (r*sin(tangency_angle_) + a)*(r*sin(tangency_angle_) + a) + (left_y - r*cos(tangency_angle_))*(left_y - r*cos(tangency_angle_)).
+        tangency_angle_ = acos((left_y*r + sqrt(pow(start_x,4) + start_x*start_x*left_y*left_y - r*r*start_x*start_x))/(left_y*left_y + start_x*start_x)); 
 
-        //Position of second_tangency_point_ is computed assuming that the position of hunter_killer_ is mirror image of the launch position along the y axis.
-        second_tangency_point_.position_.x() = (-1) * first_tangency_point_.position_.x();
-        second_tangency_point_.position_.y() = pylon_one_.y() - curvature_ * cos(tangency_angle_);
-        second_tangency_point_.position_.z() = pylon_one_.z();
-        second_tangency_point_.heading_angle_ = tangency_angle_;
+        loop_entry_point_.position.x() = arc_radius_ * sin(tangency_angle_);
+        loop_entry_point_.position.y() = left_pylon_.y() - arc_radius_ * cos(tangency_angle_);
+        loop_entry_point_.position.z() = left_pylon_.z();
+        loop_entry_point_.yaw = M_PI/2 - tangency_angle_;
+
+        //Position of loop_exit_point_ is computed assuming that the position of hunter_killer_ is mirror image of the launch position along the y axis.
+        loop_exit_point_.position.x() = (-1) * loop_entry_point_.position.x();
+        loop_exit_point_.position.y() = left_pylon_.y() - arc_radius_ * cos(tangency_angle_);
+        loop_exit_point_.position.z() = left_pylon_.z();
+        loop_exit_point_.yaw = tangency_angle_;
 
     }
 
-    void DubinsTrajectory::computeFirstHalfLoop(uint flag) {
+    void DubinsTrajectory::computeFirstHalfLoop(uint lap_number) {
 
-        Point start, end;
+        Point start(left_pylon_.x(), left_pylon_.y() - arc_radius_, left_pylon_.z(), M_PI);
+        Point end(right_pylon_.x(), right_pylon_.y() + arc_radius_, right_pylon_.z(), 0.0);
 
-        // Flag has been used to incorporate changes as the first and last loops are different from the rest ones due to the points of tangency.
-        if(flag==1) {
-            start = first_tangency_point_;
-            turn_in_one_segment_ = first_tangency_point_.heading_angle_;
+        // lap_number has been used to incorporate changes as the first and last loops are different from the rest ones due to the points of tangency.
+        if(lap_number==1) {
+            start = loop_entry_point_;
+            arc_angle_ = loop_entry_point_.yaw;
         }
         else {
-            start.position_.x() = pylon_one_.x();
-            start.position_.y() = pylon_one_.y() - curvature_;
-            start.position_.z() = pylon_one_.z();
-            start.heading_angle_= PI;
             tangency_angle_ = 0.0;
         }
 
-        end.position_.x() = pylon_two_.x();
-        end.position_.y() = pylon_two_.y() + curvature_;
-        end.position_.z() = pylon_two_.z();
-        end.heading_angle_ = 0.0;
-
-        Point prev_pos = start;
-        Point curr_pos = start;
-        if(flag==1) {
-            prev_pos.heading_angle_ = start.heading_angle_ + PI/2;
-            curr_pos.heading_angle_ = start.heading_angle_ + PI/2;
+        Point prev_pos(start.position, start.yaw);
+        Point curr_pos(start.position, start.yaw);
+        if(lap_number==1) {
+            prev_pos.yaw = start.yaw + M_PI/2;
+            curr_pos.yaw = start.yaw + M_PI/2;
         }
-        double angle_to_move = PI - tangency_angle_ - turn_in_one_segment_;   // Determines how much angle still needs to be turned before the current half loop ends.
+        double angle_to_move = M_PI - tangency_angle_ - arc_angle_;   // Determines how much angle still needs to be turned before the current half loop ends.
 
-        mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
+        mav_trajectory_generation::Vertex prev(3), curr(3);
 
-        while(prev_pos.heading_angle_ >= angle_to_move) {
-            curr_pos.position_.y()=pylon_one_.y() + curvature_ * cos(prev_pos.heading_angle_);
-            curr_pos.position_.x()=pylon_one_.x() + curvature_ * sin(prev_pos.heading_angle_);
-            curr_pos.position_.z()=start.position_.z();
-            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+        while(prev_pos.yaw >= angle_to_move) {
+            curr_pos.position.y()=left_pylon_.y() + arc_radius_ * cos(prev_pos.yaw);
+            curr_pos.position.x()=left_pylon_.x() + arc_radius_ * sin(prev_pos.yaw);
+            curr_pos.position.z()=start.position.z();
+            curr_pos.yaw = prev_pos.yaw - delta_angle_ ;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
 
         double distance = 0.0;
 
-        while(distance <= seperation_pylons_) {
-            curr_pos.position_.y() = prev_pos.position_.y() + small_change_in_distance_ * sin(angle_to_move);
-            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(angle_to_move);
-            curr_pos.position_.z()=start.position_.z();
-            distance = distance + small_change_in_distance_;
+        while(distance <= interpylon_distance_) {
+            curr_pos.position.y() = prev_pos.position.y() + delta_distance_ * sin(angle_to_move);
+            curr_pos.position.x() = prev_pos.position.x() + delta_distance_ * cos(angle_to_move);
+            curr_pos.position.z()=start.position.z();
+            distance = distance + delta_distance_;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
 
-        prev_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
-        curr_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
+        prev_pos.yaw = angle_to_move - delta_angle_;
+        curr_pos.yaw = angle_to_move - delta_angle_;
 
-        while(prev_pos.heading_angle_ >= end.heading_angle_) {
-            curr_pos.position_.y()=pylon_two_.y() + curvature_ * cos(prev_pos.heading_angle_);
-            curr_pos.position_.x()=pylon_two_.x() + curvature_ * sin(prev_pos.heading_angle_);
-            curr_pos.position_.z()=start.position_.z();
-            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+        while(prev_pos.yaw >= end.yaw) {
+            curr_pos.position.y()=right_pylon_.y() + arc_radius_ * cos(prev_pos.yaw);
+            curr_pos.position.x()=right_pylon_.x() + arc_radius_ * sin(prev_pos.yaw);
+            curr_pos.position.z()=start.position.z();
+            curr_pos.yaw = prev_pos.yaw - delta_angle_ ;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
     }
 
-    void DubinsTrajectory::computeSecondHalfLoop(uint flag) {
+    void DubinsTrajectory::computeSecondHalfLoop(uint lap_number) {
 
-        Point start, end;
+        Point start(right_pylon_.x(), right_pylon_.y() + arc_radius_, right_pylon_.z(), M_PI);
+        Point end(left_pylon_.x(), left_pylon_.y() - arc_radius_, left_pylon_.z(), 0.0);
 
-        start.position_.x() = pylon_two_.x();
-        start.position_.y() = pylon_two_.y() + curvature_;
-        start.position_.z() = pylon_two_.z();
-        start.heading_angle_ = PI;
-
-        // Flag has been used to incorporate changes as the first and last loops are different from the rest ones due to the points of tangency.
-        if(flag==8) {
-            end = second_tangency_point_;
+        // lap_number has been used to incorporate changes as the first and last loops are different from the rest ones due to the points of tangency.
+        if(lap_number==num_laps_) {
+            end = loop_exit_point_;
         }
-        else {
-            end.position_.x() = pylon_one_.x();
-            end.position_.y() = pylon_one_.y() - curvature_;
-            end.position_.z() = pylon_one_.z();
-            end.heading_angle_= 0.0;
-        }
-        tangency_angle_ = 0.0;          // Re-calculated just because when the flag is 1 this value is changed in the function computeFirstHalfLoop.
-        turn_in_one_segment_=PI/2 - atan((pylon_two_.x() - 
-                                pylon_one_.x())/(pylon_two_.y() - pylon_one_.y()));  // Re-calculated just because when the flag is 1 this value is changed in the function computeFirstHalfLoop.
 
-        Point prev_pos,curr_pos;
-        prev_pos.position_ = start.position_;
-        prev_pos.heading_angle_ = start.heading_angle_;
-        curr_pos.position_ = start.position_;
-        curr_pos.heading_angle_ = start.heading_angle_ ;
+        tangency_angle_ = 0.0;          // Re-calculated just because when the lap_number is 1 this value is changed in the function computeFirstHalfLoop.
+        arc_angle_ = M_PI/2 - atan((right_pylon_.x() - 
+                                left_pylon_.x())/(right_pylon_.y() - left_pylon_.y()));  // Re-calculated just because when the lap_number is 1 this value is changed in the function computeFirstHalfLoop.
 
-        double angle_to_move = PI - tangency_angle_ - turn_in_one_segment_;
-        mav_trajectory_generation::Vertex prev(dimension_), curr(dimension_);
+        Point prev_pos(start.position, start.yaw);
+        Point curr_pos(start.position, start.yaw);
 
-        while(prev_pos.heading_angle_ >= angle_to_move) {
-            curr_pos.position_.y()=pylon_two_.y() - curvature_ * cos(prev_pos.heading_angle_);
-            curr_pos.position_.x()=pylon_two_.x() - curvature_ * sin(prev_pos.heading_angle_);
-            curr_pos.position_.z()=start.position_.z();
-            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+        double angle_to_move = M_PI - tangency_angle_ - arc_angle_;
+        mav_trajectory_generation::Vertex prev(3), curr(3);
+
+        while(prev_pos.yaw >= angle_to_move) {
+            curr_pos.position.y()=right_pylon_.y() - arc_radius_ * cos(prev_pos.yaw);
+            curr_pos.position.x()=right_pylon_.x() - arc_radius_ * sin(prev_pos.yaw);
+            curr_pos.position.z()=start.position.z();
+            curr_pos.yaw = prev_pos.yaw - delta_angle_ ;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
 
         double distance = 0.0;
 
-        while(distance <= seperation_pylons_) {
-            curr_pos.position_.y() = prev_pos.position_.y() - small_change_in_distance_ * sin(angle_to_move);
-            curr_pos.position_.x() = prev_pos.position_.x() + small_change_in_distance_ * cos(angle_to_move);
-            curr_pos.position_.z() = start.position_.z();
-            distance = distance + small_change_in_distance_;
+        while(distance <= interpylon_distance_) {
+            curr_pos.position.y() = prev_pos.position.y() - delta_distance_ * sin(angle_to_move);
+            curr_pos.position.x() = prev_pos.position.x() + delta_distance_ * cos(angle_to_move);
+            curr_pos.position.z() = start.position.z();
+            distance = distance + delta_distance_;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
 
-        prev_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
-        curr_pos.heading_angle_ = angle_to_move - small_change_in_angle_;
+        prev_pos.yaw = angle_to_move - delta_angle_;
+        curr_pos.yaw = angle_to_move - delta_angle_;
 
-        while(prev_pos.heading_angle_ >= end.heading_angle_) {
-            curr_pos.position_.y() = pylon_one_.y() - curvature_ * cos(prev_pos.heading_angle_);
-            curr_pos.position_.x() = pylon_one_.x() - curvature_ * sin(prev_pos.heading_angle_);
-            curr_pos.position_.z() = start.position_.z();
-            curr_pos.heading_angle_ = prev_pos.heading_angle_ - small_change_in_angle_ ;
+        while(prev_pos.yaw >= end.yaw) {
+            curr_pos.position.y() = left_pylon_.y() - arc_radius_ * cos(prev_pos.yaw);
+            curr_pos.position.x() = left_pylon_.x() - arc_radius_ * sin(prev_pos.yaw);
+            curr_pos.position.z() = start.position.z();
+            curr_pos.yaw = prev_pos.yaw - delta_angle_ ;
             prev_pos = curr_pos;
 
-            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position_.x(), curr_pos.position_.y(), curr_pos.position_.z()));
+            curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(curr_pos.position.x(), curr_pos.position.y(), curr_pos.position.z()));
             vertices_.push_back(curr);
         }
 
@@ -246,26 +204,25 @@ namespace ariitk::trajectory_generation {
     void DubinsTrajectory::computePoints() {
         ROS_INFO("Calculating waypoints for the victorious forward journey"); //Please don't remove this line.Thanks!! :)
 
-        mav_trajectory_generation::Vertex start(dimension_), end(dimension_);        
+        mav_trajectory_generation::Vertex start(3), end(3);        
         derivative_to_optimize_ = mav_trajectory_generation::derivative_order::SNAP;
 
         start.makeStartOrEnd(Eigen::Vector3d(launch_pos_.x(), launch_pos_.y(), launch_pos_.z()), derivative_to_optimize_);
-
         start.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY,
-                            initial_vel_ * (first_tangency_point_ - launch_pos_).normalized());
-        end.makeStartOrEnd(Eigen::Vector3d(first_tangency_point_.position_.x(), first_tangency_point_.position_.y(), first_tangency_point_.position_.z()), derivative_to_optimize_);
+                            initial_vel_ * (loop_entry_point_.position - launch_pos_).normalized());
+        end.makeStartOrEnd(loop_entry_point_.position, derivative_to_optimize_);
 
         vertices_.push_back(start);
         vertices_.push_back(end);
 
-        for(uint i=1;i<=8;i++) {
+        for(uint i=1;i<=num_laps_;i++) {
             ROS_INFO("i= %d",i);
             ROS_INFO("size of vertices_: %d \n", vertices_.size());
             computeFirstHalfLoop(i);
             computeSecondHalfLoop(i);
         }
 
-        mav_trajectory_generation::Vertex hunter_killer(dimension_);   
+        mav_trajectory_generation::Vertex hunter_killer(3);   
         hunter_killer.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d(hunter_killer_.x(), hunter_killer_.y(), hunter_killer_.z()));
         vertices_.push_back(hunter_killer);
 
@@ -287,7 +244,7 @@ namespace ariitk::trajectory_generation {
 
         segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
 
-        mav_trajectory_generation::PolynomialOptimization<10> opt(dimension_);
+        mav_trajectory_generation::PolynomialOptimization<10> opt(3);
         opt.setupFromVertices(vertices_, segment_times_, derivative_to_optimize_);
         opt.solveLinear();
         opt.getTrajectory(&trajectory_);
@@ -299,11 +256,14 @@ namespace ariitk::trajectory_generation {
 
     bool DubinsTrajectory::commandServiceCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &resp) {
 
-        mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points_);
-        mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points_, &generated_trajectory_);
+        mav_msgs::EigenTrajectoryPoint::Vector trajectory_points;
+        trajectory_msgs::MultiDOFJointTrajectory generated_trajectory;
+
+        mav_trajectory_generation::sampleWholeTrajectory(trajectory_, 0.1, &trajectory_points);
+        mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points, &generated_trajectory);
 
         if (command_) {
-            trajectory_pub_.publish(generated_trajectory_);
+            trajectory_pub_.publish(generated_trajectory);
         }
 
         resp.success = true;
@@ -314,11 +274,9 @@ namespace ariitk::trajectory_generation {
 
     void DubinsTrajectory::run() {
 
-         if (visualize_)
-        {
+         if (visualize_) {
             marker_pub_.publish(markers_);
-        }
-        
+        }       
     }
 
 } //namespace ariitk::trajectory_generation

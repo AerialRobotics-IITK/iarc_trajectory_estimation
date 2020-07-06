@@ -10,7 +10,7 @@
             <rosparam file="$(find dubins_trajectory_generator)/cfg/params.yaml" command="load"/>
         </node>
         <node pkg="rviz" type="rviz" name="rviz" args="-d $(find dubins_trajectory_generator)/rviz/default.rviz" />
-    </group>	
+    </group>
 
     <include file="$(find iarc_simulation_tools)/launch/default.launch">
         <arg name="world_name" value="$(arg world_name)"/>

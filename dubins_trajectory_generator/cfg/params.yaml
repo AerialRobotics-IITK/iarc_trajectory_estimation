@@ -5,7 +5,7 @@ visualize: true                    # Whether to publish information for visualiz
 arc_radius: 2.0                    # Radius of the arc around the pylons.
 num_laps: 8                        # Total number of laps in one way journey.
 num_arc_points: 5                  # Number of points to put into the trajectory in one arc around a pylon.
-num_straight: 4                    # Number of points to put into the trajectory in one straight segment 
+num_straight: 4                    # Number of points to put into the trajectory in one straight segment
                                    # between the pylons.
 rate: 10.0                         # Determines the loop rate.
 command: true                      # Determines whether the mav has to follow the trajectory or not.

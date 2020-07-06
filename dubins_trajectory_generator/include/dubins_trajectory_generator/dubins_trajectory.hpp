@@ -25,6 +25,11 @@ struct Point {
         : Point(Eigen::Vector3d(x, y, z), yaw) {
     }
 
+    Point()
+        : position(Eigen::Vector3d(0, 0, 0))
+        , yaw(0.0) {
+    }
+
     Eigen::Vector3d position;
     double yaw = 0.0;
 };
@@ -36,13 +41,10 @@ class DubinsTrajectory {
     void run();
 
   private:
-    ros::NodeHandle nh_;
-    ros::NodeHandle nh_private_;
-
     void loadParams(ros::NodeHandle& nh_private);
     void computeTangencyPoints();
-    void computeFirstHalfLoop(uint lap_number);
-    void computeSecondHalfLoop(uint lap_number);
+    void computeFirstHalfLoop(const uint& lap_number);
+    void computeSecondHalfLoop(const uint& lap_number);
     void computePoints();
     bool commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 

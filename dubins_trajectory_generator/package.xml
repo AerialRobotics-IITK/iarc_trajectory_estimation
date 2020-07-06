@@ -3,7 +3,7 @@
   <name>dubins_trajectory_generator</name>
   <version>0.0.0</version>
 
-  <description> 
+  <description>
     Dubins trajectory generation for MAV.
   </description>
 
@@ -19,11 +19,7 @@
   <depend>roscpp</depend>
   <depend>mav_msgs</depend>
   <depend>std_srvs</depend>
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
-  <depend>mav_planning_common</depend>
   <depend>visualization_msgs</depend>
-  <depend>mav_trajectory_generation</depend>
   <depend>mav_trajectory_generation_ros</depend>
- 
+
 </package>

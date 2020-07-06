@@ -52,12 +52,12 @@ void DubinsTrajectory::loadParams(ros::NodeHandle &nh_private) {
   nh_private_.param("left_pylon_x", left_pylon_.x(), 0.0);
   nh_private_.param("left_pylon_y", left_pylon_.y(), 8.66);
   nh_private_.param("left_pylon_z", left_pylon_.z(), 1.0);
-  nh_private_.param("right_pylon.x", right_pylon_.x(), 0.0);
-  nh_private_.param("right_pylon.y", right_pylon_.y(), 408.66);
-  nh_private_.param("right_pylon.z", right_pylon_.z(), 1.0);
-  nh_private_.param("hunter_killer.x", hunter_killer_.x(), 5.0);
-  nh_private_.param("hunter_killer.y", hunter_killer_.y(), 1.505);
-  nh_private_.param("hunter_killer.z", hunter_killer_.z(), 1.0);
+  nh_private_.param("right_pylon_x", right_pylon_.x(), 0.0);
+  nh_private_.param("right_pylon_y", right_pylon_.y(), 408.66);
+  nh_private_.param("right_pylon_z", right_pylon_.z(), 1.0);
+  nh_private_.param("hunter_killer_x", hunter_killer_.x(), 5.0);
+  nh_private_.param("hunter_killer_y", hunter_killer_.y(), 1.505);
+  nh_private_.param("hunter_killer_z", hunter_killer_.z(), 1.0);
 }
 
 void DubinsTrajectory::computeTangencyPoints() {

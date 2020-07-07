@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>dubins_trajectory_generator</name>
+  <version>0.0.0</version>
+
+  <description>
+    Dubins trajectory generation for MAV.
+  </description>
+
+  <author email="piyushk@iitk.ac.in">Piyush Kumar</author>
+
+  <maintainer email="piyushk@iitk.ac.in">Piyush Kumar</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>mav_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>mav_trajectory_generation_ros</depend>
+
+</package>

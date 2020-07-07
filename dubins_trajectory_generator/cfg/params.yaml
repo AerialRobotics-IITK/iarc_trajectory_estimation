@@ -1,0 +1,24 @@
+initial_vel: 1.0                   # Initial velocity of the MAV.
+v_max: 2.0                         # Maximum velocity of the MAV.
+a_max: 2.0                         # Maximum acceleration of the MAV.
+visualize: true                    # Whether to publish information for visualization in RViz.
+arc_radius: 2.0                    # Radius of the arc around the pylons.
+num_laps: 8                        # Total number of laps in one way journey.
+num_arc_points: 5                  # Number of points to put into the trajectory in one arc around a pylon.
+num_straight: 4                    # Number of points to put into the trajectory in one straight segment
+                                   # between the pylons.
+rate: 10.0                         # Determines the loop rate.
+command: true                      # Determines whether the mav has to follow the trajectory or not.
+distance: 1.0                      # Distance by which to seperate additional markers.
+launch_position_x: -5.0            # x coordinate of the launch position.
+launch_position_y: 0.0             # y coordinate of the launch position.
+launch_position_z: 0.0             # z coordinate of the launch position.
+left_pylon_x: 0.0                  # x coordinate of the left pylon.
+left_pylon_y: 8.66                 # y coordinate of the left pylon.
+left_pylon_z: 1.0                  # z coordinate of the left pylon.
+right_pylon_x: 0.0                 # x coordinate of the right pylon.
+right_pylon_y: 408.66              # y coordinate of the right pylon.
+right_pylon_z: 1.0                 # z coordinate of the right pylon.
+hunter_killer_x: 5.0               # x coordinate of the hunter killer.
+hunter_killer_y: 1.505             # y coordinate of the hunter killer.
+hunter_killer_z: 1.0               # z coordinate of the hunter killer.

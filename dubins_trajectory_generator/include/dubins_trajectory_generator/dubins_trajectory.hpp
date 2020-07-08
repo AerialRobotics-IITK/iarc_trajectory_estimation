@@ -47,6 +47,8 @@ class DubinsTrajectory {
     void computeSecondHalfLoop(const uint& lap_number);
     void computePoints();
     bool commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+    bool publishStartingTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+    bool publishReturnTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 
     double v_max_;
     double a_max_;
@@ -65,6 +67,8 @@ class DubinsTrajectory {
 
     bool visualize_;
     bool command_;
+    bool starting_command_;
+    bool return_command_;
 
     Point loop_entry_point_;
     Point loop_exit_point_;
@@ -73,15 +77,28 @@ class DubinsTrajectory {
     Eigen::Vector3d hunter_killer_;
     Eigen::Vector3d launch_pos_;
     mav_trajectory_generation::Vertex::Vector vertices_;
+    mav_trajectory_generation::Vertex::Vector starting_vertices_;
     mav_trajectory_generation::Vertex::Vector reverse_vertices_;
     mav_trajectory_generation::Trajectory trajectory_;
+    mav_trajectory_generation::Trajectory starting_trajectory_;
+    mav_trajectory_generation::Trajectory return_trajectory_;
     std::vector<double> segment_times_;
 
     visualization_msgs::MarkerArray markers_;
+    visualization_msgs::MarkerArray starting_markers_;
+    visualization_msgs::MarkerArray return_markers_;
     ros::Publisher marker_pub_;
+    ros::Publisher starting_marker_pub_;
+    ros::Publisher return_marker_pub_;
     ros::Publisher trajectory_pub_;
+    ros::Publisher starting_trajectory_pub_;
+    ros::Publisher return_trajectory_pub_;
     ros::ServiceServer publish_trajectory_server_;
+    ros::ServiceServer publish_starting_traj_srv_;
+    ros::ServiceServer publish_return_traj_srv_;
     ros::ServiceClient publish_trajectory_client_;
+    ros::ServiceClient publish_starting_traj_client_;
+    ros::ServiceClient publish_return_traj_client_;
 };
 
 }  // namespace ariitk::trajectory_generation

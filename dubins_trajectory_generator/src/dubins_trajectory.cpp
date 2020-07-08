@@ -4,9 +4,18 @@ namespace ariitk::trajectory_generation {
 
 DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_private) {
     marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
+    starting_marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
+    return_marker_pub_ = nh.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
     trajectory_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+    starting_trajectory_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+    return_trajectory_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+
     publish_trajectory_server_ = nh.advertiseService("command", &DubinsTrajectory::commandServiceCallback, this);
+    publish_starting_traj_srv_ = nh.advertiseService("starting_command", &DubinsTrajectory::publishStartingTrajectory, this);
+    publish_return_traj_srv_ = nh.advertiseService("return_command", &DubinsTrajectory::publishReturnTrajectory, this);
     publish_trajectory_client_ = nh.serviceClient<std_srvs::Trigger>("command");
+    publish_starting_traj_client_ = nh.serviceClient<std_srvs::Trigger>("starting_command");
+    publish_return_traj_client_ = nh.serviceClient<std_srvs::Trigger>("return_command");
 
     DubinsTrajectory::loadParams(nh_private);
 
@@ -26,6 +35,8 @@ DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_priv
 void DubinsTrajectory::loadParams(ros::NodeHandle& nh_private) {
     nh_private.param("visualize", visualize_, true);
     nh_private.param("command", command_, true);
+    nh_private.param("starting_command", starting_command_, true);
+    nh_private.param("return_command", return_command_, true);
 
     nh_private.param("distance", distance_, 1.0);
     nh_private.param("initial_vel", initial_vel_, 1.0);
@@ -232,11 +243,15 @@ void DubinsTrajectory::computePoints() {
 
     ROS_INFO("Reversing waypoints for the victorious return journey");
     reverse_vertices_ = vertices_;
+    starting_vertices_ = vertices_;
     std::reverse(reverse_vertices_.begin(), reverse_vertices_.end());
     vertices_.insert(vertices_.end(), ++reverse_vertices_.begin(), reverse_vertices_.end());  // For proper segment_times.
+    auto it = reverse_vertices_.begin();
+    reverse_vertices_.erase(it);
 }
 
 void DubinsTrajectory::generateTrajectory() {
+    //Calculating the complete trajectory including both starting and return journeys.
     segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
 
     mav_trajectory_generation::PolynomialOptimization<10> opt(3);
@@ -246,6 +261,28 @@ void DubinsTrajectory::generateTrajectory() {
 
     std::string frame_id = "world";
     mav_trajectory_generation::drawMavTrajectory(trajectory_, distance_, frame_id, &markers_);
+
+    //Calculating the starting trajectory only.
+    std::vector<double> starting_segment_times;
+    starting_segment_times = mav_trajectory_generation::estimateSegmentTimes(starting_vertices_, v_max_, a_max_);
+
+    mav_trajectory_generation::PolynomialOptimization<10> starting_opt(3);
+    starting_opt.setupFromVertices(starting_vertices_, starting_segment_times, derivative_to_optimize_);
+    starting_opt.solveLinear();
+    starting_opt.getTrajectory(&starting_trajectory_);
+
+    mav_trajectory_generation::drawMavTrajectory(starting_trajectory_, distance_, frame_id, &starting_markers_);
+
+    //Calculating the return trajectory only.
+    std::vector<double> return_segment_times;
+    return_segment_times = mav_trajectory_generation::estimateSegmentTimes(reverse_vertices_, v_max_, a_max_);
+
+    mav_trajectory_generation::PolynomialOptimization<10> return_opt(3);
+    return_opt.setupFromVertices(reverse_vertices_, return_segment_times, derivative_to_optimize_);
+    return_opt.solveLinear();
+    return_opt.getTrajectory(&return_trajectory_);
+
+    mav_trajectory_generation::drawMavTrajectory(return_trajectory_, distance_, frame_id, &return_markers_);
 }
 
 bool DubinsTrajectory::commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp) {
@@ -260,14 +297,50 @@ bool DubinsTrajectory::commandServiceCallback(std_srvs::Trigger::Request& req, s
     }
 
     resp.success = true;
-    resp.message = "Trajectory given as command";
+    resp.message = "Command given to the MAV to follow the complete trajectory";
+    ROS_INFO("%s\n", resp.message.c_str());
+    return true;
+}
+
+bool DubinsTrajectory::publishStartingTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp) {
+    mav_msgs::EigenTrajectoryPoint::Vector trajectory_points;
+    trajectory_msgs::MultiDOFJointTrajectory generated_trajectory;
+
+    mav_trajectory_generation::sampleWholeTrajectory(starting_trajectory_, 0.1, &trajectory_points);
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points, &generated_trajectory);
+
+    if (starting_command_) {
+        starting_trajectory_pub_.publish(generated_trajectory);
+    }
+
+    resp.success = true;
+    resp.message = "Command given to the MAV to follow the starting trajectory";
+    ROS_INFO("%s\n", resp.message.c_str());
+    return true;
+}
+
+bool DubinsTrajectory::publishReturnTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp) {
+    mav_msgs::EigenTrajectoryPoint::Vector trajectory_points;
+    trajectory_msgs::MultiDOFJointTrajectory generated_trajectory;
+
+    mav_trajectory_generation::sampleWholeTrajectory(return_trajectory_, 0.1, &trajectory_points);
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(trajectory_points, &generated_trajectory);
+
+    if (return_command_) {
+        return_trajectory_pub_.publish(generated_trajectory);
+    }
+
+    resp.success = true;
+    resp.message = "Command given to the MAV to follow the return trajectory";
     ROS_INFO("%s\n", resp.message.c_str());
     return true;
 }
 
 void DubinsTrajectory::run() {
     if (visualize_) {
-        marker_pub_.publish(markers_);
+        // marker_pub_.publish(markers_);
+        starting_marker_pub_.publish(starting_markers_);
+        return_marker_pub_.publish(return_markers_);
     }
 }
 

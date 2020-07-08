@@ -39,6 +39,8 @@ class DubinsTrajectory {
     DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_private);
     void generateTrajectory();
     void run();
+    bool publishStartingTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+    bool publishReturnTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 
   private:
     void loadParams(ros::NodeHandle& nh_private);
@@ -47,8 +49,6 @@ class DubinsTrajectory {
     void computeSecondHalfLoop(const uint& lap_number);
     void computePoints();
     bool commandServiceCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
-    bool publishStartingTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
-    bool publishReturnTrajectory(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 
     double v_max_;
     double a_max_;
@@ -82,7 +82,6 @@ class DubinsTrajectory {
     mav_trajectory_generation::Trajectory trajectory_;
     mav_trajectory_generation::Trajectory starting_trajectory_;
     mav_trajectory_generation::Trajectory return_trajectory_;
-    std::vector<double> segment_times_;
 
     visualization_msgs::MarkerArray markers_;
     visualization_msgs::MarkerArray starting_markers_;

@@ -8,7 +8,9 @@ num_arc_points: 5                  # Number of points to put into the trajectory
 num_straight: 4                    # Number of points to put into the trajectory in one straight segment
                                    # between the pylons.
 rate: 10.0                         # Determines the loop rate.
-command: true                      # Determines whether the mav has to follow the trajectory or not.
+command: true                      # Determines whether the MAV has to follow the complete trajectory or not.
+starting_command: true             # Determines whether the MAV has to follow only the starting trajectory or not.
+return_command: true               # Determines whether the MAV has to follow only the return trajectory or not.
 distance: 1.0                      # Distance by which to seperate additional markers.
 launch_position_x: -5.0            # x coordinate of the launch position.
 launch_position_y: 0.0             # y coordinate of the launch position.

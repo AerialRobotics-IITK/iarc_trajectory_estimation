@@ -252,10 +252,11 @@ void DubinsTrajectory::computePoints() {
 
 void DubinsTrajectory::generateTrajectory() {
     //Calculating the complete trajectory including both starting and return journeys.
-    segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
+    std::vector<double> segment_times;
+    segment_times = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
 
     mav_trajectory_generation::PolynomialOptimization<10> opt(3);
-    opt.setupFromVertices(vertices_, segment_times_, derivative_to_optimize_);
+    opt.setupFromVertices(vertices_, segment_times, derivative_to_optimize_);
     opt.solveLinear();
     opt.getTrajectory(&trajectory_);
 

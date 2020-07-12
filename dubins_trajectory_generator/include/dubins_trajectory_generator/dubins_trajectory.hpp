@@ -60,6 +60,8 @@ class DubinsTrajectory {
     double delta_distance_;
     double tangency_angle_;
     double initial_vel_;
+    double turning_vel_;
+    double max_roll_angle_;
     int num_arc_points_;
     int num_linear_points_;
     int derivative_to_optimize_;

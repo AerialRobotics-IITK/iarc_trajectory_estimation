@@ -1,5 +1,6 @@
 #include <dubins_trajectory_generator/dubins_trajectory.hpp>
 
+const double g = 9.8;
 namespace ariitk::trajectory_generation {
 
 DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_private) {
@@ -27,6 +28,12 @@ DubinsTrajectory::DubinsTrajectory(ros::NodeHandle& nh, ros::NodeHandle& nh_priv
     delta_angle_ = (arc_angle_) / num_arc_points_;
     delta_distance_ = (interpylon_distance_) / num_linear_points_;
 
+    /*
+      We can simply derive the formula used below by applying Newton's third law on the MAV while it's turning around one of the pylons.
+      The two forces that we consider acting on the MAV while deriving it are gravitational force and centrifugal force.
+      We can parameterize the value of arc_radius_ or turning_vel_ depending on the limitations of the MAV and accordingly calculate the other one.
+    */
+    turning_vel_ = sqrt(arc_radius_ * g * tan(max_roll_angle_)); 
     DubinsTrajectory::computeTangencyPoints();
     DubinsTrajectory::computePoints();
     DubinsTrajectory::generateTrajectory();
@@ -50,6 +57,7 @@ void DubinsTrajectory::loadParams(ros::NodeHandle& nh_private) {
     nh_private.param("arc_radius", arc_radius_, 2.0);
     nh_private.param("num_arc_points", num_arc_points_, 5);
     nh_private.param("num_linear_points", num_linear_points_, 4);
+    nh_private.param("max_roll_angle", max_roll_angle_, 0.2);
 
     nh_private.param("launch_position_x", launch_pos_.x(), -5.0);
     nh_private.param("launch_position_y", launch_pos_.y(), 0.0);

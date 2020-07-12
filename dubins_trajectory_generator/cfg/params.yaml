@@ -1,4 +1,5 @@
 initial_vel: 1.0                   # Initial velocity of the MAV.
+max_roll_angle: 0.2                # Determines the maximum roll angle of the MAV in radians.
 v_max: 2.0                         # Maximum velocity of the MAV.
 a_max: 2.0                         # Maximum acceleration of the MAV.
 visualize: true                    # Whether to publish information for visualization in RViz.

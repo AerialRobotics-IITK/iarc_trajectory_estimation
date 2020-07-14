@@ -128,9 +128,12 @@ void DubinsTrajectory::computeFirstHalfLoop(const uint& lap_number) {
             left_pylon_.y() + arc_radius_ * cos(prev_pos.yaw),
             start.position.z(),
             prev_pos.yaw - delta_angle_);
+
+        Eigen::Vector3d turning_vel(turning_vel_ * sin(prev_pos.yaw - M_PI / 2), turning_vel_ * cos(prev_pos.yaw - M_PI / 2), 0.0); // Using simple geometry and trigonometry and assuming no velocity in the z direction.
+        curr.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, turning_vel);
+        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);    
         prev_pos = curr_pos;
 
-        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         vertices_.push_back(curr);
     }
 
@@ -156,9 +159,12 @@ void DubinsTrajectory::computeFirstHalfLoop(const uint& lap_number) {
             right_pylon_.y() + arc_radius_ * cos(prev_pos.yaw),
             start.position.z(),
             prev_pos.yaw - delta_angle_);
+
+        Eigen::Vector3d turning_vel(-1.0 * turning_vel_ * cos(prev_pos.yaw), turning_vel_ * sin(prev_pos.yaw), 0.0); // Using simple geometry and trigonometry and assuming no velocity in the z direction.
+        curr.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, turning_vel);
+        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         prev_pos = curr_pos;
 
-        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         vertices_.push_back(curr);
     }
 }
@@ -190,9 +196,12 @@ void DubinsTrajectory::computeSecondHalfLoop(const uint& lap_number) {
             right_pylon_.y() - arc_radius_ * cos(prev_pos.yaw),
             start.position.z(),
             prev_pos.yaw - delta_angle_);
+
+        Eigen::Vector3d turning_vel(turning_vel_ * cos(prev_pos.yaw), (-1.0) * turning_vel_ * sin(prev_pos.yaw), 0.0); // Using simple geometry and trigonometry and assuming no velocity in the z direction.
+        curr.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, turning_vel);
+        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         prev_pos = curr_pos;
 
-        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         vertices_.push_back(curr);
     }
 
@@ -218,9 +227,12 @@ void DubinsTrajectory::computeSecondHalfLoop(const uint& lap_number) {
             left_pylon_.y() - arc_radius_ * cos(prev_pos.yaw),
             start.position.z(),
             prev_pos.yaw - delta_angle_);
+        
+        Eigen::Vector3d turning_vel(turning_vel_ * cos(curr_pos.yaw), (-1.0) * turning_vel_ * sin(curr_pos.yaw), 0.0); // Using simple geometry and trigonometry and assuming no velocity in the z direction.
+        curr.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, turning_vel);
+        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         prev_pos = curr_pos;
 
-        curr.addConstraint(mav_trajectory_generation::derivative_order::POSITION, curr_pos.position);
         vertices_.push_back(curr);
     }
 }

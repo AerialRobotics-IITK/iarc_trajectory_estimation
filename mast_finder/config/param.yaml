@@ -1,0 +1,8 @@
+ship_centre_x: 0  #* Centre of the polygon
+ship_centre_y: 0
+ship_centre_z: 0
+
+radius: 4         #* Radius of the polygon
+
+n_sides: 6        #* No. of sides of the polygon
+

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="mast_finder"    type="mast_finder_node"    name="mast_locator_node"         output="screen">
+        <rosparam file="$(find mast_finder)/config/param.yaml" />
+        <!-- <remap from="odom"         to="ground_truth/odometry" /> -->
+    </node>
+</launch>

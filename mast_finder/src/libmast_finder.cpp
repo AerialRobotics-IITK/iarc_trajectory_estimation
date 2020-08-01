@@ -31,7 +31,7 @@ void MastLocator::updateSetpoint() {
     setpoint_.y = ship_centre_.y + (radius_ * sin(theta_ - phi_));
     theta_ += (2 * PI) / n_sides_;
     sides_done_ += 1;
-    if (sides_done_ == n_sides_) {
+    if (sides_done_ == n_sides_ + 1) {
         scouting_done_ = true;
     }
 }

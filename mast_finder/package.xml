@@ -14,9 +14,11 @@
 
   <build_depend>roscpp</build_depend>
 
+  <depend>detector_msgs</depend>
   <depend>message_generation</depend>
   <depend>message_runtime</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>tf</depend>
 
 </package>

@@ -16,6 +16,7 @@ class MastLocator {
     void setNsides(int& n_sides);
     void updateSetpoint();
     bool getScoutingdone();
+    int getSidesdone();
     mast_finder::Setpoint getSetpoint();
 
   private:
@@ -24,7 +25,7 @@ class MastLocator {
     float radius_;
     int n_sides_;
     double theta_ = 0.0;
-    double phi_ = PI / 2;
+    double phi_ = PI;
     bool scouting_done_ = false;
     int sides_done_ = 0;
 };

@@ -1,9 +1,11 @@
 #include <mast_finder/mast_finder.hpp>
+#define sq(x) (x) * (x)
 
 namespace iarc2020::mast_locator {
 
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
+    front_coord_sub_ = nh.subscribe("front_coord", 10, &MastLocatorNode::frontCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -19,6 +21,7 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     setpoint_.x = 0.0;
     setpoint_.y = 0.0;
     setpoint_.z = 2.0;
+    yaw_change_ = 0;
 
     locate_.setSetpoint(setpoint_);
     locate_.setShipcentre(ship_centre_);
@@ -30,29 +33,72 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 }
 
 void MastLocatorNode::run() {
+    publishYaw();
     publishSetpoint();
+    publishMsg();
 }
 
 void MastLocatorNode::publishSetpoint() {
-    ros::Rate rate(transition_rate_);
-    bool scouting_done = locate_.getScoutingdone();
+    sides_done_ = locate_.getSidesdone();
 
-    if (scouting_done != true) {
-        locate_.updateSetpoint();
-        setpoint_ = locate_.getSetpoint();
-        std::cout << setpoint_.x << ' ' << setpoint_.y << '\n';
+    if (sides_done_ >= n_sides_ + 1) {
+        return;
     }
+
+    locate_.updateSetpoint();
+    setpoint_ = locate_.getSetpoint();
+    std::cout << "Current Setpoint = " << setpoint_.x << ' ' << setpoint_.y << '\n';
 
     next_setpt_.pose.position.x = setpoint_.x;
     next_setpt_.pose.position.y = setpoint_.y;
     next_setpt_.pose.position.z = setpoint_.z;
+}
 
+void MastLocatorNode::publishYaw() {
+    if (sides_done_ >= n_sides_ - 1) {
+        return;
+    }
+
+    double v1x, v1y, v2x, v2y;
+
+    v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
+    v1y = front_coord_.y - odom_.pose.pose.position.y;
+
+    v2x = setpoint_.x - odom_.pose.pose.position.x;  //* Vector pointing toards ship centre
+    v2y = setpoint_.y - odom_.pose.pose.position.y;
+
+    double mod_v1 = sqrt(sq(v1x) + sq(v1y));
+    double mod_v2 = sqrt(sq(v2x) + sq(v2y));
+
+    if (mod_v1 == 0) {
+        mod_v1 = 1;
+    }
+
+    if (mod_v2 == 0) {
+        mod_v2 = 1;
+    }
+
+    double crossp = ((v1x * v2y) - (v1y * v2x)) / (mod_v1 * mod_v2);
+
+    yaw_change_ -= asin(crossp);
+
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+
+    std::cout << "Current Yaw = " << yaw_change_ << "\n";
+}
+
+void MastLocatorNode::publishMsg() {
+    ros::Rate rate(transition_rate_);
     setpoint_pub_.publish(next_setpt_);
     rate.sleep();
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {
     odom_ = msg;
+}
+
+void MastLocatorNode::frontCallback(const detector_msgs::GlobalCoord& msg) {
+    front_coord_ = msg;
 }
 
 }  // namespace iarc2020::mast_locator

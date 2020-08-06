@@ -26,14 +26,15 @@ mast_finder::Setpoint MastLocator::getSetpoint() {
     return setpoint_;
 }
 
+int MastLocator::getSidesdone() {
+    return sides_done_;
+}
+
 void MastLocator::updateSetpoint() {
     setpoint_.x = ship_centre_.x + (radius_ * cos(theta_ - phi_));
     setpoint_.y = ship_centre_.y + (radius_ * sin(theta_ - phi_));
     theta_ += (2 * PI) / n_sides_;
     sides_done_ += 1;
-    if (sides_done_ == n_sides_ + 1) {
-        scouting_done_ = true;
-    }
 }
 
 }  // namespace iarc2020::mast_locator

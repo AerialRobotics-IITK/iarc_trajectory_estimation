@@ -13,8 +13,8 @@ int main(int argc, char** argv) {
     ros::Rate loop_rate(20);
 
     while (ros::ok()) {
-        locate.run();
         ros::spinOnce();
+        locate.run();
         loop_rate.sleep();
     }
 

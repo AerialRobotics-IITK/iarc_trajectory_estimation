@@ -6,6 +6,7 @@ namespace iarc2020::mast_locator {
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
     front_coord_sub_ = nh.subscribe("front_coord", 10, &MastLocatorNode::frontCallback, this);
+    centre_sub_ = nh.subscribe("centre_coord", 10, &MastLocatorNode::centreCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -20,8 +21,9 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 
     setpoint_.x = 0.0;
     setpoint_.y = 0.0;
-    setpoint_.z = 2.0;
+    setpoint_.z = 1.5;
     yaw_change_ = 0;
+    scouting_done_ = false;
 
     locate_.setSetpoint(setpoint_);
     locate_.setShipcentre(ship_centre_);
@@ -33,6 +35,12 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 }
 
 void MastLocatorNode::run() {
+    if (centre_coord_.x != -1 || centre_coord_.y != -1) {
+        scouting_done_ = true;
+        std::cout << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
+        auto temp = system("rosnode kill mast_locator_node");
+        return;
+    }
     publishYaw();
     publishSetpoint();
     publishMsg();
@@ -64,7 +72,7 @@ void MastLocatorNode::publishYaw() {
     v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
     v1y = front_coord_.y - odom_.pose.pose.position.y;
 
-    v2x = setpoint_.x - odom_.pose.pose.position.x;  //* Vector pointing toards ship centre
+    v2x = setpoint_.x - odom_.pose.pose.position.x;     //* Vector pointing toards ship centre
     v2y = setpoint_.y - odom_.pose.pose.position.y;
 
     double mod_v1 = sqrt(sq(v1x) + sq(v1y));
@@ -99,6 +107,10 @@ void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {
 
 void MastLocatorNode::frontCallback(const detector_msgs::GlobalCoord& msg) {
     front_coord_ = msg;
+}
+
+void MastLocatorNode::centreCallback(const detector_msgs::Centre& msg) {
+    centre_coord_ = msg;
 }
 
 }  // namespace iarc2020::mast_locator

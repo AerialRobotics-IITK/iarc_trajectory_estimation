@@ -47,7 +47,7 @@ void MastLocatorNode::run() {
 }
 
 void MastLocatorNode::publishSetpoint() {
-    sides_done_ = locate_.getSidesdone();
+    sides_done_ = locate_.getSidesDone();
 
     if (sides_done_ >= n_sides_ + 1) {
         return;
@@ -72,7 +72,7 @@ void MastLocatorNode::publishYaw() {
     v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
     v1y = front_coord_.y - odom_.pose.pose.position.y;
 
-    v2x = setpoint_.x - odom_.pose.pose.position.x;     //* Vector pointing toards ship centre
+    v2x = setpoint_.x - odom_.pose.pose.position.x;     //* Vector pointing towards ship centre
     v2y = setpoint_.y - odom_.pose.pose.position.y;
 
     double mod_v1 = sqrt(sq(v1x) + sq(v1y));

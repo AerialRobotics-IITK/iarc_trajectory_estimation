@@ -18,7 +18,7 @@ void MastLocator::setNsides(int& n_sides) {
     n_sides_ = n_sides;
 }
 
-bool MastLocator::getScoutingdone() {
+bool MastLocator::getScoutingDone() {
     return scouting_done_;
 }
 
@@ -26,7 +26,7 @@ mast_finder::Setpoint MastLocator::getSetpoint() {
     return setpoint_;
 }
 
-int MastLocator::getSidesdone() {
+int MastLocator::getSidesDone() {
     return sides_done_;
 }
 

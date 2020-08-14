@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="mast_finder"    type="mast_finder_node"    name="mast_locator_node"         output="screen">
+        <rosparam file="$(find mast_finder)/config/param.yaml" />
+        <remap from="odom"                to="firefly/ground_truth/odometry" />
+        <remap from="pose"                to="firefly/command/pose" />
+        <remap from="front_coord"         to="firefly/plate_pose_estimator_node/front_coord" />
+        <remap from="centre_coord"        to="firefly/plate_detector_node/centre_coord" />
+    </node>
+</launch>

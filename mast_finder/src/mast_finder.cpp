@@ -6,6 +6,7 @@ namespace iarc2020::mast_locator {
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
     front_coord_sub_ = nh.subscribe("front_coord", 10, &MastLocatorNode::frontCallback, this);
+    pose_sub_ = nh.subscribe("estimated_coord", 10, &MastLocatorNode::poseCallback, this);
     centre_sub_ = nh.subscribe("centre_coord", 10, &MastLocatorNode::centreCallback, this);
 
     ros::NodeHandle nh_private("~");
@@ -35,10 +36,12 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 }
 
 void MastLocatorNode::run() {
-    if (centre_coord_.x != -1 || centre_coord_.y != -1) {
-        scouting_done_ = true;
-        std::cout << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
-        auto temp = system("rosnode kill mast_locator_node");
+    if (scouting_done_ == true) {
+        // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
+        return;
+    }
+    isMastDetected();
+    if (scouting_done_ == true) {
         return;
     }
     publishYaw();
@@ -72,7 +75,7 @@ void MastLocatorNode::publishYaw() {
     v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
     v1y = front_coord_.y - odom_.pose.pose.position.y;
 
-    v2x = setpoint_.x - odom_.pose.pose.position.x;     //* Vector pointing towards ship centre
+    v2x = setpoint_.x - odom_.pose.pose.position.x;  //* Vector pointing towards ship centre
     v2y = setpoint_.y - odom_.pose.pose.position.y;
 
     double mod_v1 = sqrt(sq(v1x) + sq(v1y));
@@ -96,9 +99,77 @@ void MastLocatorNode::publishYaw() {
 }
 
 void MastLocatorNode::publishMsg() {
-    ros::Rate rate(transition_rate_);
     setpoint_pub_.publish(next_setpt_);
-    rate.sleep();
+}
+
+void MastLocatorNode::isMastDetected() {
+    ros::Rate rate(transition_rate_);
+
+    for (int i = 0; i < 50; i++) {
+        ros::spinOnce();
+
+        if (centre_coord_.x != -1 || centre_coord_.y != -1) {
+            scouting_done_ = true;
+
+            for (int j = 0; j < 30; j++) {  //* wait for quad to stabilize after initial detecton to get proper pose
+                rate.sleep();
+            }
+            ros::spinOnce();
+            std::cout << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
+            ifMastDetected();
+            return;
+        }
+        rate.sleep();
+    }
+}
+
+void MastLocatorNode::ifMastDetected() {
+    next_setpt_.pose.position.x = odom_.pose.pose.position.x;
+    next_setpt_.pose.position.y = odom_.pose.pose.position.y;
+    next_setpt_.pose.position.z = odom_.pose.pose.position.z;
+
+    double v1x, v1y, v2x, v2y;
+
+    v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
+    v1y = front_coord_.y - odom_.pose.pose.position.y;
+
+    v2x = pose_.x - odom_.pose.pose.position.x;  //* Vector pointing towards estimated plate centre
+    v2y = pose_.y - odom_.pose.pose.position.y;
+
+    double mod_v1 = sqrt(sq(v1x) + sq(v1y));
+    double mod_v2 = sqrt(sq(v2x) + sq(v2y));
+
+    if (mod_v1 == 0) {
+        mod_v1 = 1;
+    }
+
+    if (mod_v2 == 0) {
+        mod_v2 = 1;
+    }
+
+    double crossp = ((v1x * v2y) - (v1y * v2x)) / (mod_v1 * mod_v2);
+
+    if (crossp < 0) {
+        yaw_change_ += asin(crossp);
+    } else {
+        yaw_change_ -= asin(crossp);
+    }
+
+    std::cout << "Plate Pose = " << pose_.x << ' ' << pose_.y << "\n";
+
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+
+    setpoint_pub_.publish(next_setpt_);
+
+    // while (centre_coord_.d > 3) {    //TODO: Loop for going near the mast tbd after vel control
+    //     ros::spinOnce();
+    //     detector_msgs::GlobalCoord temp = pose_;
+    //     next_setpt_.pose.position.x = temp.x;
+    //     next_setpt_.pose.position.y = temp.y;
+    //     next_setpt_.pose.position.z = odom_.pose.pose.position.z;
+    //     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    //     setpoint_pub_.publish(next_setpt_);
+    // }
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {
@@ -111,6 +182,10 @@ void MastLocatorNode::frontCallback(const detector_msgs::GlobalCoord& msg) {
 
 void MastLocatorNode::centreCallback(const detector_msgs::Centre& msg) {
     centre_coord_ = msg;
+}
+
+void MastLocatorNode::poseCallback(const detector_msgs::GlobalCoord& msg) {
+    pose_ = msg;
 }
 
 }  // namespace iarc2020::mast_locator

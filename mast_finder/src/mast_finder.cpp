@@ -17,8 +17,11 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     nh_private.getParam("radius", radius_);
     nh_private.getParam("n_sides", n_sides_);
     nh_private.getParam("transition_rate", transition_rate_);
+    nh_private.getParam("max_velocity", v_max_);
+    nh_private.getParam("max_accleration", a_max_);
 
     setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("pose", 10);
+    traj_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 10);
 
     setpoint_.x = 0.0;
     setpoint_.y = 0.0;
@@ -36,17 +39,24 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 }
 
 void MastLocatorNode::run() {
-    if (scouting_done_ == true) {
-        // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
+    // if (scouting_done_ == true) {
+    //     // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
+    //     return;
+    // }
+    // isMastDetected();
+    // if (scouting_done_ == true) {
+    //     return;
+    // }
+    // publishYaw();
+    // publishSetpoint();
+    // publishMsg();
+    test();
+    if (flag == true) {
         return;
     }
-    isMastDetected();
-    if (scouting_done_ == true) {
-        return;
-    }
-    publishYaw();
-    publishSetpoint();
-    publishMsg();
+    planTrajectory();
+    getTrajectory();
+    publishTrajectory();
 }
 
 void MastLocatorNode::publishSetpoint() {
@@ -170,6 +180,62 @@ void MastLocatorNode::ifMastDetected() {
     //     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
     //     setpoint_pub_.publish(next_setpt_);
     // }
+}
+
+void MastLocatorNode::test() {
+    ;
+}
+
+void MastLocatorNode::planTrajectory() {
+    sides_done_ = locate_.getSidesDone();
+    float yaw = 0;
+
+    while (sides_done_ < n_sides_) {
+        sides_done_ = locate_.getSidesDone();
+        locate_.updateSetpoint();
+        setpoint_ = locate_.getSetpoint();
+
+        mav_trajectory_generation::Vertex traj_vertex(4);
+
+        traj_point_(0) = setpoint_.x;
+        traj_point_(1) = setpoint_.y;
+        traj_point_(2) = setpoint_.z;
+        traj_point_(3) = yaw;
+        traj_vel_(0) = setpoint_.x;
+        traj_vel_(1) = setpoint_.y;
+        traj_vel_(2) = setpoint_.z;
+        traj_vel_(3) = 0.0;
+
+        std::cout << "Trajectory Setpoint = " << setpoint_.x << ' ' << setpoint_.y << ' ' << setpoint_.z << ' ' << yaw << '\n';
+
+        traj_vertex.makeStartOrEnd(traj_point_, derivative_to_optimize);
+        // traj_vertex.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, traj_vel_);
+        vertices_.push_back(traj_vertex);
+
+        yaw += (2 * M_PI) / n_sides_;
+    }
+}
+
+void MastLocatorNode::getTrajectory() {
+    segment_times_ = mav_trajectory_generation::estimateSegmentTimes(vertices_, v_max_, a_max_);
+
+    mav_trajectory_generation::PolynomialOptimizationNonLinear<10> opt(4, parameters_);
+    opt.setupFromVertices(vertices_, segment_times_, derivative_to_optimize);
+    opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::VELOCITY, v_max_);
+    opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::ACCELERATION, a_max_);
+    opt.optimize();
+    opt.getTrajectory(&traj_);
+
+    mav_msgs::EigenTrajectoryPoint::Vector traj_points;
+    mav_trajectory_generation::sampleWholeTrajectory(traj_, 0.1, &traj_points);
+    mav_msgs::msgMultiDofJointTrajectoryFromEigen(traj_points, &generated_traj_);
+}
+
+void MastLocatorNode::publishTrajectory() {
+    if (flag != true) {
+        traj_pub_.publish(generated_traj_);
+        flag = true;
+    }
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {

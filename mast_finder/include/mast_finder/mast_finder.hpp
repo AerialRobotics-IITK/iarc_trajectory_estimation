@@ -29,13 +29,14 @@ class MastLocatorNode {
     void publishSetpoint();
     void publishYaw();
     void publishMsg();
-    void isMastDetected();
-    void ifMastDetected();
+    void isMastDetected_1();
+    void ifMastDetected_1();
     //* Using mav_trajectory_generation
-    void test();
     void planTrajectory();
     void getTrajectory();
     void publishTrajectory();
+    void isMastDetected_2();
+    void ifMastDetected_2();
 
   private:
     MastLocator locate_;
@@ -47,9 +48,14 @@ class MastLocatorNode {
     detector_msgs::Centre centre_coord_;
     nav_msgs::Odometry odom_;
     geometry_msgs::PoseStamped next_setpt_;
+    float radius_;
+    int n_sides_;
+    float transition_rate_;
+    double yaw_change_;
+    bool scouting_done_;  //* Flag for after mast is detected
+    int sides_done_;
     //* mav_traj_gen variables -> start
     Eigen::Vector4d traj_point_;
-    Eigen::Vector4d traj_vel_;
     const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
     mav_trajectory_generation::Vertex::Vector vertices_;
     mav_trajectory_generation::Trajectory traj_;
@@ -58,14 +64,8 @@ class MastLocatorNode {
     trajectory_msgs::MultiDOFJointTrajectory generated_traj_;
     float a_max_;
     float v_max_;
-    bool flag = false;
+    bool traj_published_ = false;
     //* mav_traj_gen variables -> end
-    float radius_;
-    int n_sides_;
-    float transition_rate_;
-    double yaw_change_;
-    bool scouting_done_;  //* Flag for after mast is detected
-    int sides_done_;
 
     ros::Subscriber odom_sub_;
     ros::Subscriber front_coord_sub_;

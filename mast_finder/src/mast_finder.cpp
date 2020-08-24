@@ -39,19 +39,30 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
 }
 
 void MastLocatorNode::run() {
-    // if (scouting_done_ == true) {
-    //     // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
-    //     return;
-    // }
-    // isMastDetected();
-    // if (scouting_done_ == true) {
-    //     return;
-    // }
-    // publishYaw();
-    // publishSetpoint();
-    // publishMsg();
-    test();
-    if (flag == true) {
+    //* Manual Setpoint Publishing
+
+    /*
+    if (scouting_done_ == true) {
+        // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
+        return;
+    }
+    isMastDetected_1();
+    if (scouting_done_ == true) {
+        return;
+    }
+    publishYaw();
+    publishSetpoint();
+    publishMsg();
+    */
+
+    //* Setpoint Publishing using mav_trajectory_generation
+
+    if (scouting_done_ == true) {
+        // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
+        return;
+    }
+    isMastDetected_2();
+    if (traj_published_ == true) {
         return;
     }
     planTrajectory();
@@ -112,7 +123,7 @@ void MastLocatorNode::publishMsg() {
     setpoint_pub_.publish(next_setpt_);
 }
 
-void MastLocatorNode::isMastDetected() {
+void MastLocatorNode::isMastDetected_1() {
     ros::Rate rate(transition_rate_);
 
     for (int i = 0; i < 50; i++) {
@@ -126,14 +137,14 @@ void MastLocatorNode::isMastDetected() {
             }
             ros::spinOnce();
             std::cout << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
-            ifMastDetected();
+            ifMastDetected_1();
             return;
         }
         rate.sleep();
     }
 }
 
-void MastLocatorNode::ifMastDetected() {
+void MastLocatorNode::ifMastDetected_1() {
     next_setpt_.pose.position.x = odom_.pose.pose.position.x;
     next_setpt_.pose.position.y = odom_.pose.pose.position.y;
     next_setpt_.pose.position.z = odom_.pose.pose.position.z;
@@ -182,10 +193,6 @@ void MastLocatorNode::ifMastDetected() {
     // }
 }
 
-void MastLocatorNode::test() {
-    ;
-}
-
 void MastLocatorNode::planTrajectory() {
     sides_done_ = locate_.getSidesDone();
     float yaw = 0;
@@ -201,15 +208,10 @@ void MastLocatorNode::planTrajectory() {
         traj_point_(1) = setpoint_.y;
         traj_point_(2) = setpoint_.z;
         traj_point_(3) = yaw;
-        traj_vel_(0) = setpoint_.x;
-        traj_vel_(1) = setpoint_.y;
-        traj_vel_(2) = setpoint_.z;
-        traj_vel_(3) = 0.0;
 
         std::cout << "Trajectory Setpoint = " << setpoint_.x << ' ' << setpoint_.y << ' ' << setpoint_.z << ' ' << yaw << '\n';
 
         traj_vertex.makeStartOrEnd(traj_point_, derivative_to_optimize);
-        // traj_vertex.addConstraint(mav_trajectory_generation::derivative_order::VELOCITY, traj_vel_);
         vertices_.push_back(traj_vertex);
 
         yaw += (2 * M_PI) / n_sides_;
@@ -232,10 +234,74 @@ void MastLocatorNode::getTrajectory() {
 }
 
 void MastLocatorNode::publishTrajectory() {
-    if (flag != true) {
+    if (traj_published_ != true) {
         traj_pub_.publish(generated_traj_);
-        flag = true;
+        traj_published_ = true;
     }
+}
+
+void MastLocatorNode::isMastDetected_2() {
+    ros::Rate rate(transition_rate_);
+
+    if (centre_coord_.x != -1 || centre_coord_.y != -1) {
+        scouting_done_ = true;
+        ros::spinOnce();
+
+        next_setpt_.pose.position.x = odom_.pose.pose.position.x;
+        next_setpt_.pose.position.y = odom_.pose.pose.position.y;
+        next_setpt_.pose.position.z = odom_.pose.pose.position.z;
+        next_setpt_.pose.orientation = odom_.pose.pose.orientation;
+        setpoint_pub_.publish(next_setpt_);
+
+        for (int j = 0; j < 30; j++) {  //* wait for quad to stabilize after initial detecton to get proper pose
+            rate.sleep();
+        }
+        ros::spinOnce();
+        std::cout << '\n' << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
+        ifMastDetected_2();
+        return;
+    }
+}
+
+void MastLocatorNode::ifMastDetected_2() {
+    next_setpt_.pose.position.x = odom_.pose.pose.position.x;
+    next_setpt_.pose.position.y = odom_.pose.pose.position.y;
+    next_setpt_.pose.position.z = odom_.pose.pose.position.z;
+
+    yaw_change_ = tf::getYaw(odom_.pose.pose.orientation);
+
+    double v1x, v1y, v2x, v2y;
+
+    v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
+    v1y = front_coord_.y - odom_.pose.pose.position.y;
+
+    v2x = pose_.x - odom_.pose.pose.position.x;  //* Vector pointing towards estimated plate centre
+    v2y = pose_.y - odom_.pose.pose.position.y;
+
+    double mod_v1 = sqrt(sq(v1x) + sq(v1y));
+    double mod_v2 = sqrt(sq(v2x) + sq(v2y));
+
+    if (mod_v1 == 0) {
+        mod_v1 = 1;
+    }
+
+    if (mod_v2 == 0) {
+        mod_v2 = 1;
+    }
+
+    double crossp = ((v1x * v2y) - (v1y * v2x)) / (mod_v1 * mod_v2);
+
+    if (crossp < 0) {
+        yaw_change_ += asin(crossp);
+    } else {
+        yaw_change_ -= asin(crossp);
+    }
+
+    std::cout << '\n' << "Plate Pose = " << pose_.x << ' ' << pose_.y << "\n";
+
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+
+    setpoint_pub_.publish(next_setpt_);
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {

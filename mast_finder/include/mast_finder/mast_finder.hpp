@@ -29,14 +29,14 @@ class MastLocatorNode {
     void publishSetpoint();
     void publishYaw();
     void publishMsg();
-    void isMastDetected_1();
-    void ifMastDetected_1();
+    void isMastDetectedManual();
+    void ifMastDetectedManual();
     //* Using mav_trajectory_generation
     void planTrajectory();
     void getTrajectory();
     void publishTrajectory();
-    void isMastDetected_2();
-    void ifMastDetected_2();
+    void isMastDetectedGenerated();
+    void ifMastDetectedGenerated();
 
   private:
     MastLocator locate_;

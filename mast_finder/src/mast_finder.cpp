@@ -46,7 +46,7 @@ void MastLocatorNode::run() {
         // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
         return;
     }
-    isMastDetected_1();
+    isMastDetectedManual();
     if (scouting_done_ == true) {
         return;
     }
@@ -61,7 +61,7 @@ void MastLocatorNode::run() {
         // auto temp = system("rosnode kill mast_locator_node");  //* Uncomment this if you want to kill the node
         return;
     }
-    isMastDetected_2();
+    isMastDetectedGenerated();
     if (traj_published_ == true) {
         return;
     }
@@ -123,7 +123,7 @@ void MastLocatorNode::publishMsg() {
     setpoint_pub_.publish(next_setpt_);
 }
 
-void MastLocatorNode::isMastDetected_1() {
+void MastLocatorNode::isMastDetectedManual() {
     ros::Rate rate(transition_rate_);
 
     for (int i = 0; i < 50; i++) {
@@ -137,14 +137,14 @@ void MastLocatorNode::isMastDetected_1() {
             }
             ros::spinOnce();
             std::cout << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
-            ifMastDetected_1();
+            ifMastDetectedManual();
             return;
         }
         rate.sleep();
     }
 }
 
-void MastLocatorNode::ifMastDetected_1() {
+void MastLocatorNode::ifMastDetectedManual() {
     next_setpt_.pose.position.x = odom_.pose.pose.position.x;
     next_setpt_.pose.position.y = odom_.pose.pose.position.y;
     next_setpt_.pose.position.z = odom_.pose.pose.position.z;
@@ -240,7 +240,7 @@ void MastLocatorNode::publishTrajectory() {
     }
 }
 
-void MastLocatorNode::isMastDetected_2() {
+void MastLocatorNode::isMastDetectedGenerated() {
     ros::Rate rate(transition_rate_);
 
     if (centre_coord_.x != -1 || centre_coord_.y != -1) {
@@ -258,12 +258,12 @@ void MastLocatorNode::isMastDetected_2() {
         }
         ros::spinOnce();
         std::cout << '\n' << "Centre at " << centre_coord_.x << ' ' << centre_coord_.y << '\n';
-        ifMastDetected_2();
+        ifMastDetectedGenerated();
         return;
     }
 }
 
-void MastLocatorNode::ifMastDetected_2() {
+void MastLocatorNode::ifMastDetectedGenerated() {
     next_setpt_.pose.position.x = odom_.pose.pose.position.x;
     next_setpt_.pose.position.y = odom_.pose.pose.position.y;
     next_setpt_.pose.position.z = odom_.pose.pose.position.z;

@@ -1,9 +1,12 @@
-ship_centre_x: 4      #* Centre of the polygon
+ship_centre_x: 4        #* Centre of the polygon
 ship_centre_y: 0
 ship_centre_z: 1.5
 
-radius: 5             #* Radius of the polygon
+radius: 6               #* Radius of the polygon
 
-n_sides: 8            #* No. of sides of the polygon
+n_sides: 8              #* No. of sides of the polygon
 
-transition_rate: 0.75 #* Wait time between side transition
+transition_rate: 20     #* Wait time between side transition
+
+max_velocity: 1         #* Max velocity of the drone
+max_accleration: 1      #* Max accleration of the drone

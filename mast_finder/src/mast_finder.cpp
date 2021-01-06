@@ -8,6 +8,8 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     front_coord_sub_ = nh.subscribe("front_coord", 10, &MastLocatorNode::frontCallback, this);
     pose_sub_ = nh.subscribe("estimated_coord", 10, &MastLocatorNode::poseCallback, this);
     centre_sub_ = nh.subscribe("centre_coord", 10, &MastLocatorNode::centreCallback, this);
+    plate_front_vec_sub_ = nh.subscribe("plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
+    yaw_correction_sub_ = nh.subscribe("yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -62,9 +64,29 @@ void MastLocatorNode::run() {
         return;
     }
     isMastDetectedGenerated();
+    if (scouting_done_ == true) {
+        ros::Rate rate(0.75);
+        for (int i = 0; i <= 4; i++) {
+            rate.sleep();
+            ros::spinOnce();
+        }
+
+        correctYaw();
+        std::cout << "Corrected " << yaw_correction_.z * 360 / M_PI << " degrees" << std::endl << std::endl;
+
+        for (float j = 2.5; j > 0; j--) {
+            for (int i = 0; i <= 1; i++) {
+                rate.sleep();
+                ros::spinOnce();
+            }
+            goNearMast(j);
+        }
+    }
+
     if (traj_published_ == true) {
         return;
     }
+
     planTrajectory();
     getTrajectory();
     publishTrajectory();
@@ -181,16 +203,6 @@ void MastLocatorNode::ifMastDetectedManual() {
     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
 
     setpoint_pub_.publish(next_setpt_);
-
-    // while (centre_coord_.d > 3) {    //TODO: Loop for going near the mast tbd after vel control
-    //     ros::spinOnce();
-    //     detector_msgs::GlobalCoord temp = pose_;
-    //     next_setpt_.pose.position.x = temp.x;
-    //     next_setpt_.pose.position.y = temp.y;
-    //     next_setpt_.pose.position.z = odom_.pose.pose.position.z;
-    //     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
-    //     setpoint_pub_.publish(next_setpt_);
-    // }
 }
 
 void MastLocatorNode::planTrajectory() {
@@ -304,6 +316,40 @@ void MastLocatorNode::ifMastDetectedGenerated() {
     setpoint_pub_.publish(next_setpt_);
 }
 
+void MastLocatorNode::correctYaw() {
+    next_setpt_.pose.position.x = odom_.pose.pose.position.x;
+    next_setpt_.pose.position.y = odom_.pose.pose.position.y;
+    next_setpt_.pose.position.z = odom_.pose.pose.position.z;
+
+    if (yaw_correction_.z < 0) {
+        yaw_change_ -= yaw_correction_.z;
+    } else {
+        yaw_change_ += yaw_correction_.z;
+    }
+
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    setpoint_pub_.publish(next_setpt_);
+}
+
+void MastLocatorNode::goNearMast(float dist) {
+    Eigen::Vector3d v, w;
+    w(0) = plate_front_vec_.x;
+    w(1) = plate_front_vec_.y;
+    w(2) = plate_front_vec_.z;
+    v = w / sqrt(w.dot(w));
+    next_setpt_.pose.position.x = pose_.x + (dist * v(0));
+    next_setpt_.pose.position.y = pose_.y + (dist * v(1));
+    next_setpt_.pose.position.z = pose_.z + (dist * v(2));
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    setpoint_pub_.publish(next_setpt_);
+
+    std::cout << "[" << next_setpt_.pose.position.x
+              << " " << next_setpt_.pose.position.y
+              << " " << next_setpt_.pose.position.z
+              << "]" << std::endl << std::endl;
+
+}
+
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {
     odom_ = msg;
 }
@@ -318,6 +364,14 @@ void MastLocatorNode::centreCallback(const detector_msgs::Centre& msg) {
 
 void MastLocatorNode::poseCallback(const detector_msgs::GlobalCoord& msg) {
     pose_ = msg;
+}
+
+void MastLocatorNode::yawCorrectionCallback(const detector_msgs::GlobalCoord& msg) {
+    yaw_correction_ = msg;
+}
+
+void MastLocatorNode::plateFrontVecCallback(const detector_msgs::GlobalCoord& msg) {
+    plate_front_vec_ = msg;
 }
 
 }  // namespace iarc2020::mast_locator

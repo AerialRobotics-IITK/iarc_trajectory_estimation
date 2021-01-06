@@ -8,5 +8,7 @@
         <remap from="centre_coord"          to="firefly/plate_detector_node/centre_coord" />
         <remap from="estimated_coord"       to="firefly/plate_pose_estimator_node/estimated_coord" />
         <remap from="trajectory"            to="firefly/command/trajectory" />
+        <remap from="yaw_correction"        to="firefly/plate_pose_estimator_node/yaw_correction" />
+        <remap from="plate_front_vec"       to="firefly/plate_pose_estimator_node/plate_front_vec" />
     </node>
 </launch>

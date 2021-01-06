@@ -25,18 +25,12 @@ class MastLocatorNode {
   public:
     void init(ros::NodeHandle& nh);
     void run();
-    //* Manual setpoint publishing, takes ~20 sec to reach the mast
-    void publishSetpoint();
-    void publishYaw();
-    void publishMsg();
-    void isMastDetectedManual();
-    void ifMastDetectedManual();
     //* Using mav_trajectory_generation
     void planTrajectory();
     void getTrajectory();
     void publishTrajectory();
-    void isMastDetectedGenerated();
-    void ifMastDetectedGenerated();
+    void isMastDetected();
+    void ifMastDetected();
     void correctYaw();
     void goNearMast(float dist);
 

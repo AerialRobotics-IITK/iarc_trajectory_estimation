@@ -25,18 +25,14 @@ class MastLocatorNode {
   public:
     void init(ros::NodeHandle& nh);
     void run();
-    //* Manual setpoint publishing, takes ~20 sec to reach the mast
-    void publishSetpoint();
-    void publishYaw();
-    void publishMsg();
-    void isMastDetectedManual();
-    void ifMastDetectedManual();
     //* Using mav_trajectory_generation
     void planTrajectory();
     void getTrajectory();
     void publishTrajectory();
-    void isMastDetectedGenerated();
-    void ifMastDetectedGenerated();
+    void isMastDetected();
+    void ifMastDetected();
+    void correctYaw();
+    void goNearMast(float dist);
 
   private:
     MastLocator locate_;
@@ -45,6 +41,8 @@ class MastLocatorNode {
     mast_finder::Setpoint ship_centre_;
     detector_msgs::GlobalCoord front_coord_;
     detector_msgs::GlobalCoord pose_;
+    detector_msgs::GlobalCoord yaw_correction_;
+    detector_msgs::GlobalCoord plate_front_vec_;
     detector_msgs::Centre centre_coord_;
     nav_msgs::Odometry odom_;
     geometry_msgs::PoseStamped next_setpt_;
@@ -54,6 +52,7 @@ class MastLocatorNode {
     double yaw_change_;
     bool scouting_done_;  //* Flag for after mast is detected
     int sides_done_;
+
     //* mav_traj_gen variables -> start
     Eigen::Vector4d traj_point_;
     const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
@@ -71,11 +70,15 @@ class MastLocatorNode {
     ros::Subscriber front_coord_sub_;
     ros::Subscriber centre_sub_;
     ros::Subscriber pose_sub_;
+    ros::Subscriber yaw_correction_sub_;
+    ros::Subscriber plate_front_vec_sub_;
 
     void odomCallback(const nav_msgs::Odometry& msg);
     void frontCallback(const detector_msgs::GlobalCoord& msg);
     void centreCallback(const detector_msgs::Centre& msg);
     void poseCallback(const detector_msgs::GlobalCoord& msg);
+    void yawCorrectionCallback(const detector_msgs::GlobalCoord& msg);
+    void plateFrontVecCallback(const detector_msgs::GlobalCoord& msg);
 
     ros::Publisher setpoint_pub_;
     ros::Publisher traj_pub_;

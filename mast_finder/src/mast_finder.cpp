@@ -209,10 +209,10 @@ void MastLocatorNode::goNearMast(float dist) {
     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
     setpoint_pub_.publish(next_setpt_);
 
-    std::cout << "[" << next_setpt_.pose.position.x
-              << " " << next_setpt_.pose.position.y
-              << " " << next_setpt_.pose.position.z
-              << "]" << std::endl << std::endl;
+    // std::cout << "[" << next_setpt_.pose.position.x
+    //           << " " << next_setpt_.pose.position.y
+    //           << " " << next_setpt_.pose.position.z
+    //           << "]" << std::endl << std::endl;
 
 }
 

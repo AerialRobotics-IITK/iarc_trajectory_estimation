@@ -20,7 +20,7 @@
 #include <mast_finder/Setpoint.h>
 #include <mast_finder/libmast_finder.hpp>
 
-namespace iarc2020::mast_locator {
+namespace ariitk::mast_locator {
 class MastLocatorNode {
   public:
     void init(ros::NodeHandle& nh);
@@ -84,4 +84,4 @@ class MastLocatorNode {
     ros::Publisher traj_pub_;
 };
 
-}  // namespace iarc2020::mast_locator
+}  // namespace ariitk::mast_locator

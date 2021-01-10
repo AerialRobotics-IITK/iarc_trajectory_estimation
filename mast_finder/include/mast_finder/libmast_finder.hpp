@@ -6,7 +6,7 @@
 
 #define PI 3.14159265358979323846
 
-namespace iarc2020::mast_locator {
+namespace ariitk::mast_locator {
 
 class MastLocator {
   public:
@@ -30,4 +30,4 @@ class MastLocator {
     int sides_done_ = 0;
 };
 
-}  // namespace iarc2020::mast_locator
+}  // namespace ariitk::mast_locator

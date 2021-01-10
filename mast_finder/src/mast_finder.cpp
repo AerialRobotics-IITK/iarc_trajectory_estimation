@@ -1,7 +1,7 @@
 #include <mast_finder/mast_finder.hpp>
 #define sq(x) (x) * (x)
 
-namespace iarc2020::mast_locator {
+namespace ariitk::mast_locator {
 
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
@@ -240,4 +240,4 @@ void MastLocatorNode::plateFrontVecCallback(const detector_msgs::GlobalCoord& ms
     plate_front_vec_ = msg;
 }
 
-}  // namespace iarc2020::mast_locator
+}  // namespace ariitk::mast_locator

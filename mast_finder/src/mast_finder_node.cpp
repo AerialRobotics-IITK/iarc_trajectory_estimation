@@ -1,6 +1,6 @@
 #include <mast_finder/mast_finder.hpp>
 
-using namespace iarc2020::mast_locator;
+using namespace ariitk::mast_locator;
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "mast_locator_node");

@@ -1,6 +1,6 @@
 #include <mast_finder/libmast_finder.hpp>
 
-namespace iarc2020::mast_locator {
+namespace ariitk::mast_locator {
 
 void MastLocator::setSetpoint(mast_finder::Setpoint& setpoint) {
     setpoint_ = setpoint;
@@ -37,4 +37,4 @@ void MastLocator::updateSetpoint() {
     sides_done_ += 1;
 }
 
-}  // namespace iarc2020::mast_locator
+}  // namespace ariitk::mast_locator

@@ -5,11 +5,11 @@ namespace ariitk::mast_locator {
 
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
-    front_coord_sub_ = nh.subscribe("front_coord", 10, &MastLocatorNode::frontCallback, this);
-    pose_sub_ = nh.subscribe("estimated_coord", 10, &MastLocatorNode::poseCallback, this);
-    centre_sub_ = nh.subscribe("centre_coord", 10, &MastLocatorNode::centreCallback, this);
-    plate_front_vec_sub_ = nh.subscribe("plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
-    yaw_correction_sub_ = nh.subscribe("yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
+    front_coord_sub_ = nh.subscribe("agent_state_machine/front_coord", 10, &MastLocatorNode::frontCallback, this);
+    pose_sub_ = nh.subscribe("agent_state_machine/estimated_coord", 10, &MastLocatorNode::poseCallback, this);
+    centre_sub_ = nh.subscribe("agent_state_machine/centre_coord", 10, &MastLocatorNode::centreCallback, this);
+    plate_front_vec_sub_ = nh.subscribe("agent_state_machine/plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
+    yaw_correction_sub_ = nh.subscribe("agent_state_machine/yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -22,7 +22,7 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     nh_private.getParam("max_velocity", v_max_);
     nh_private.getParam("max_accleration", a_max_);
 
-    setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("pose", 10);
+    setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("command/pose", 10);
     traj_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 10);
 
     setpoint_.x = 0.0;

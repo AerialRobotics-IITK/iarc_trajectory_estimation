@@ -52,6 +52,7 @@ class MastLocatorNode {
     double yaw_change_;
     bool scouting_done_;  //* Flag for after mast is detected
     int sides_done_;
+    double min_distance_;
 
     //* mav_traj_gen variables -> start
     Eigen::Vector4d traj_point_;

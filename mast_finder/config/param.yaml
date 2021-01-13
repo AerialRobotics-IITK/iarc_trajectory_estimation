@@ -10,3 +10,5 @@ transition_rate: 20     #* Wait time between side transition
 
 max_velocity: 1         #* Max velocity of the drone
 max_accleration: 1      #* Max accleration of the drone
+
+min_distance: 0.4       #* Final distance of the drone fron the mast

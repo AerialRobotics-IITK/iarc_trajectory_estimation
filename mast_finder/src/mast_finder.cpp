@@ -5,11 +5,11 @@ namespace ariitk::mast_locator {
 
 void MastLocatorNode::init(ros::NodeHandle& nh) {
     odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
-    front_coord_sub_ = nh.subscribe("agent_state_machine/front_coord", 10, &MastLocatorNode::frontCallback, this);
-    pose_sub_ = nh.subscribe("agent_state_machine/estimated_coord", 10, &MastLocatorNode::poseCallback, this);
-    centre_sub_ = nh.subscribe("agent_state_machine/centre_coord", 10, &MastLocatorNode::centreCallback, this);
-    plate_front_vec_sub_ = nh.subscribe("agent_state_machine/plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
-    yaw_correction_sub_ = nh.subscribe("agent_state_machine/yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
+    front_coord_sub_ = nh.subscribe("plate_pose_estimator_node/front_coord", 10, &MastLocatorNode::frontCallback, this);
+    pose_sub_ = nh.subscribe("plate_pose_estimator_node/estimated_coord", 10, &MastLocatorNode::poseCallback, this);
+    centre_sub_ = nh.subscribe("plate_detector_node/centre_coord", 10, &MastLocatorNode::centreCallback, this);
+    plate_front_vec_sub_ = nh.subscribe("plate_pose_estimator_node/plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
+    yaw_correction_sub_ = nh.subscribe("plate_pose_estimator_node/yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -21,6 +21,7 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     nh_private.getParam("transition_rate", transition_rate_);
     nh_private.getParam("max_velocity", v_max_);
     nh_private.getParam("max_accleration", a_max_);
+    nh_private.getParam("min_distance", min_distance_);
 
     setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("command/pose", 10);
     traj_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 10);
@@ -58,11 +59,12 @@ void MastLocatorNode::run() {
         correctYaw();
         std::cout << "Corrected " << yaw_correction_.z * 360 / M_PI << " degrees" << std::endl << std::endl;
 
-        for (float j = 2.5; j > 0; j--) {
+        for (double j = min_distance_ + 2; j > 0; j--) {
             for (int i = 0; i <= 1; i++) {
                 rate.sleep();
                 ros::spinOnce();
             }
+            std::cout << "Beep " << j << std::endl;
             goNearMast(j);
         }
     }
@@ -156,7 +158,7 @@ void MastLocatorNode::ifMastDetected() {
     double v1x, v1y, v2x, v2y;
     v1x = front_coord_.x - odom_.pose.pose.position.x;  //* Vector poining in front of the drone
     v1y = front_coord_.y - odom_.pose.pose.position.y;
-    v2x = pose_.x - odom_.pose.pose.position.x;         //* Vector pointing towards estimated plate centre
+    v2x = pose_.x - odom_.pose.pose.position.x;  //* Vector pointing towards estimated plate centre
     v2y = pose_.y - odom_.pose.pose.position.y;
     double mod_v1 = sqrt(sq(v1x) + sq(v1y));
     double mod_v2 = sqrt(sq(v2x) + sq(v2y));
@@ -176,7 +178,7 @@ void MastLocatorNode::ifMastDetected() {
         yaw_change_ -= asin(crossp);
     }
 
-    std::cout << '\n' << "Plate Pose = " << pose_.x << ' ' << pose_.y << std::endl << std::endl;
+    std::cout << '\n' << "Plate Pose = " << pose_.x << ' ' << pose_.y << ' ' << pose_.z << std::endl << std::endl;
     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
     setpoint_pub_.publish(next_setpt_);
 }
@@ -197,6 +199,8 @@ void MastLocatorNode::correctYaw() {
 }
 
 void MastLocatorNode::goNearMast(float dist) {
+    correctYaw();
+    std::cout << "Corrected " << yaw_correction_.z * 360 / M_PI << " degrees" << std::endl << std::endl;
     Eigen::Vector3d v, w;
     w(0) = plate_front_vec_.x;
     w(1) = plate_front_vec_.y;
@@ -213,7 +217,6 @@ void MastLocatorNode::goNearMast(float dist) {
     //           << " " << next_setpt_.pose.position.y
     //           << " " << next_setpt_.pose.position.z
     //           << "]" << std::endl << std::endl;
-
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {

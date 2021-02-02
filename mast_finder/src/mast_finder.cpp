@@ -4,12 +4,12 @@
 namespace ariitk::mast_locator {
 
 void MastLocatorNode::init(ros::NodeHandle& nh) {
-    odom_sub_ = nh.subscribe("odom", 10, &MastLocatorNode::odomCallback, this);
-    front_coord_sub_ = nh.subscribe("plate_pose_estimator_node/front_coord", 10, &MastLocatorNode::frontCallback, this);
-    pose_sub_ = nh.subscribe("plate_pose_estimator_node/estimated_coord", 10, &MastLocatorNode::poseCallback, this);
-    centre_sub_ = nh.subscribe("plate_detector_node/centre_coord", 10, &MastLocatorNode::centreCallback, this);
-    plate_front_vec_sub_ = nh.subscribe("plate_pose_estimator_node/plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
-    yaw_correction_sub_ = nh.subscribe("plate_pose_estimator_node/yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
+    odom_sub_ = nh.subscribe("quadrotor/ground_truth/odometry", 10, &MastLocatorNode::odomCallback, this);
+    front_coord_sub_ = nh.subscribe("quadrotor/plate_pose_estimator_node/front_coord", 10, &MastLocatorNode::frontCallback, this);
+    pose_sub_ = nh.subscribe("quadrotor/plate_pose_estimator_node/estimated_coord", 10, &MastLocatorNode::poseCallback, this);
+    centre_sub_ = nh.subscribe("quadrotor/plate_detector_node/centre_coord", 10, &MastLocatorNode::centreCallback, this);
+    plate_front_vec_sub_ = nh.subscribe("quadrotor/plate_pose_estimator_node/plate_front_vec", 10, &MastLocatorNode::plateFrontVecCallback, this);
+    yaw_correction_sub_ = nh.subscribe("quadrotor/plate_pose_estimator_node/yaw_correction", 10, &MastLocatorNode::yawCorrectionCallback, this);
 
     ros::NodeHandle nh_private("~");
 
@@ -23,7 +23,7 @@ void MastLocatorNode::init(ros::NodeHandle& nh) {
     nh_private.getParam("max_accleration", a_max_);
     nh_private.getParam("min_distance", min_distance_);
 
-    setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("command/pose", 10);
+    setpoint_pub_ = nh.advertise<geometry_msgs::PoseStamped>("quadrotor/command/pose", 10);
     traj_pub_ = nh.advertise<trajectory_msgs::MultiDOFJointTrajectory>("trajectory", 10);
 
     setpoint_.x = 0.0;
@@ -67,6 +67,8 @@ void MastLocatorNode::run() {
             std::cout << "Beep " << j << std::endl;
             goNearMast(j);
         }
+
+        // detachBlock();
     }
 
     if (traj_published_ == true) {
@@ -211,12 +213,68 @@ void MastLocatorNode::goNearMast(float dist) {
     next_setpt_.pose.position.y = pose_.y + (dist * v(1));
     next_setpt_.pose.position.z = pose_.z + (dist * v(2));
     next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    std::cout << next_setpt_ << std::endl << std::endl;
     setpoint_pub_.publish(next_setpt_);
 
     // std::cout << "[" << next_setpt_.pose.position.x
     //           << " " << next_setpt_.pose.position.y
     //           << " " << next_setpt_.pose.position.z
     //           << "]" << std::endl << std::endl;
+}
+
+void MastLocatorNode::detachBlock() {
+    ros::Rate rate(0.75);
+    for (int k = 3; k > 0; k--) {
+        rate.sleep();
+    }
+
+    // double area_prev = 0;
+    // double area_curr = centre_coord_.a;
+    // for (int i = 0; i < 100; i++) {
+    //     next_setpt_.pose.position.x = next_setpt_.pose.position.x;
+    //     next_setpt_.pose.position.y = next_setpt_.pose.position.y;
+    //     next_setpt_.pose.position.z = next_setpt_.pose.position.z;
+
+    //     if (area_curr > area_prev) {
+    //         if (yaw_correction_.z < 0) {
+    //             yaw_change_ -= 0.05;
+    //         } else {
+    //             yaw_change_ += 0.05;
+    //         }
+    //         next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    //     } 
+    //     setpoint_pub_.publish(next_setpt_);
+    //     // rate.sleep();
+    //     ros::spinOnce();
+    // }
+
+    next_setpt_.pose.position.x = next_setpt_.pose.position.x;
+    next_setpt_.pose.position.y = next_setpt_.pose.position.y;
+    next_setpt_.pose.position.z = next_setpt_.pose.position.z - 0.05;
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    std::cout << next_setpt_ << std::endl << std::endl;
+    setpoint_pub_.publish(next_setpt_);
+
+    std::cout << next_setpt_ << std::endl << std::endl;
+
+    for (int k = 3; k > 0; k--) {
+        rate.sleep();
+    }
+
+    Eigen::Vector3d v, w;
+    w(0) = plate_front_vec_.x;
+    w(1) = plate_front_vec_.y;
+    w(2) = plate_front_vec_.z;
+    v = w / sqrt(w.dot(w));
+
+    next_setpt_.pose.position.x = pose_.x + (2.4 * v(0));
+    next_setpt_.pose.position.y = pose_.y + (2.4 * v(1));
+    // next_setpt_.pose.position.z = pose_.z + (2.4 * v(2));
+    next_setpt_.pose.position.z = next_setpt_.pose.position.z;
+    next_setpt_.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_change_);
+    setpoint_pub_.publish(next_setpt_);
+
+    std::cout << next_setpt_ << std::endl << std::endl;
 }
 
 void MastLocatorNode::odomCallback(const nav_msgs::Odometry& msg) {

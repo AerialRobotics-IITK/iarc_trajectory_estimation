@@ -2,13 +2,13 @@
 <launch>
     <node pkg="mast_finder"    type="mast_finder_node"    name="mast_locator_node"         output="screen">
         <rosparam file="$(find mast_finder)/config/param.yaml" />
-        <remap from="odom"                  to="firefly/ground_truth/odometry" />
-        <remap from="pose"                  to="firefly/command/pose" />
-        <remap from="front_coord"           to="firefly/plate_pose_estimator_node/front_coord" />
-        <remap from="centre_coord"          to="firefly/plate_detector_node/centre_coord" />
-        <remap from="estimated_coord"       to="firefly/plate_pose_estimator_node/estimated_coord" />
-        <remap from="trajectory"            to="firefly/command/trajectory" />
-        <remap from="yaw_correction"        to="firefly/plate_pose_estimator_node/yaw_correction" />
-        <remap from="plate_front_vec"       to="firefly/plate_pose_estimator_node/plate_front_vec" />
+        <!-- <remap from="odom"                  to="quadrotor/odometry_sensor1/odometry" /> -->
+        <!-- <remap from="pose"                  to="quadrotor/command/pose" /> -->
+        <remap from="front_coord"           to="quadrotor/plate_pose_estimator_node/front_coord" />
+        <remap from="centre_coord"          to="quadrotor/plate_detector_node/centre_coord" />
+        <remap from="estimated_coord"       to="quadrotor/plate_pose_estimator_node/estimated_coord" />
+        <remap from="trajectory"            to="quadrotor/command/trajectory" />
+        <remap from="yaw_correction"        to="quadrotor/plate_pose_estimator_node/yaw_correction" />
+        <remap from="plate_front_vec"       to="quadrotor/plate_pose_estimator_node/plate_front_vec" />
     </node>
 </launch>

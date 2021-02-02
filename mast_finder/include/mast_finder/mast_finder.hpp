@@ -33,6 +33,7 @@ class MastLocatorNode {
     void ifMastDetected();
     void correctYaw();
     void goNearMast(float dist);
+    void detachBlock();
 
   private:
     MastLocator locate_;
